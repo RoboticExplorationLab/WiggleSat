@@ -1,0 +1,16 @@
+# This file is machine-generated - editing it directly is not advised
+
+[[Attitude]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "fa0548a6c4a70d6a69c7d6c8e6bf482101459b0d"
+repo-rev = "master"
+repo-url = "https://github.com/kevin-tracy/Attitude.jl.git"
+uuid = "8b3d34c0-dc4a-4a06-a8c8-4215f240a648"
+version = "0.1.0"
+
+[[Libdl]]
+uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+
+[[LinearAlgebra]]
+deps = ["Libdl"]
+uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
