@@ -20,7 +20,7 @@ function run_SD_prop(dt)
     eci0 = sOSCtoCART(oe0, use_degrees=true)
 
     # Set the propagation end time to one orbit period after the start
-    T    = 20*orbit_period(oe0[1])
+    T    = 1*orbit_period(oe0[1])
     epcf = epc0 + T
 
     # Create an EarthInertialState orbit propagagator
@@ -102,31 +102,93 @@ end
 
 function srp_torque(r_eci,epoch,ᴺqᴮ,params)
 
-    R_spec = params.R_spec
-    R_diff = params.R_diff
-    R_abs = params.R_abs
+    R_spec = params.faces.R_spec
+    R_diff = params.faces.R_diff
+    R_abs = params.faces.R_abs
 
-    N_b = params.faces_n
-    S = params.faces_areas
+    N_b = params.faces.normal_vecs
+    S = params.faces.areas
+    r = params.faces.r
 
     r_sun_eci = sun_position(epoch)
 
     # position vector from spacecraft to sun
-    sc_r_sun = r_sun_eci - r_eci
+    sc_r_sun = (r_sun_eci - r_eci)
 
     # normalize and express in the body frame
     ᴮQᴺ = transpose(dcm_from_q(ᴺqᴮ))
     s = ᴮQᴺ*normalize(sc_r_sun)
-
+    # @show s
     # Get dot products
-    I_vec = params.faces_n_b'*s
+    I_vec = N_b'*s
+    # @show I_vec
 
-    F_srp = zeros(6)
+    F_srp = fill(zeros(3),6)
     τ_srp = zeros(3)
     for i = 1:6
+        # @show i
+        # @infiltrate
+        # error()
         F_srp[i] = -P_SUN*S[i]*( 2*(R_diff/3 + R_spec*I_vec[i])*N_b[:,i] +
-                    (1-R_spec)*s)*max(I_vec[i],0)
+                    (1-R_spec)*s)*max(I_vec[i],0.0)
+
+        # @show F_srp
+        τ_srp += cross(r[i],F_srp[i])
+        # @infiltrate
+    end
+    # error()
+    # @show τ_srp
+    active_faces = sum(I_vec .> 0)
+
+    return τ_srp,active_faces,F_srp
 end
+
+function generate_geometry(length,width,height)
+    # dim_L = .1
+    # dim_W = .2
+    # dim_H = .3
+    L = length
+    W = width
+    H = height
+    volume = L*W*H
+    mass = volume*(1/0.01)
+
+    # inertia
+    J = (mass/12)*Array(I(3))
+    J[1,1] *= H^2 +W^2
+    J[2,2] *= H^2 +L^2
+    J[3,3] *= L^2 +W^2
+
+    # faces normal vectors
+    faces_n = Array([I(3) -I(3)])
+
+    # faces areas
+    faces_areas = [W*H; H*L; L*W; W*H; H*L; L*W]
+
+    # face position vectors
+    r = fill(zeros(3),6)
+    r[1] = L/2 * faces_n[:,1]
+    r[2] = W/2 * faces_n[:,2]
+    r[3] = H/2 * faces_n[:,3]
+    r[4] = L/2 * faces_n[:,4]
+    r[5] = W/2 * faces_n[:,5]
+    r[6] = H/2 * faces_n[:,6]
+
+    # properties assuming 1/3 aluminum, 2/3 gallium arsenide
+    # R_spec = 0.3
+    # R_diff = .23333
+    # R_abs = 0.46667
+    R_spec = 0.1
+    R_diff = .2
+    R_abs = 0.7
+
+    faces = (normal_vecs = faces_n, areas = faces_areas, r = r,
+             R_spec = R_spec, R_diff = R_diff, R_abs  = R_abs)
+
+    return faces, J
+end
+
+
 
 # function fft_analysis()
 #     x = τ_plot[2,:]
@@ -139,17 +201,10 @@ end
 function run_sim()
 
 
+    # create spacecraft geometrical properties
+    faces, J = generate_geometry(.1,.2,.3)
 
-    faces_n = Array([I(3) -I(3)])
-    faces_areas = .01*ones(6)
-    R_spec = 0.33
-    R_diff = 0.34
-    R_abs  = 0.33
-
-
-    params  = (J = diagm([1;2;3.0]),face_n = faces_n,
-               faces_areas = faces_areas, R_spec = R_spec,
-               R_diff = R_diff, R_abs = R_abs)
+    params  = (J = J,faces = faces)
     dt = 20.0
 
     t, epc, r_eci, v_eci = run_SD_prop(dt)
@@ -159,22 +214,42 @@ function run_sim()
     N = length(r_eci)
 
     τ_hist = fill(zeros(3),N)
+    F_srp = fill(  fill(zeros(3),6)   ,N)
+    active_faces = zeros(N)
 
     for k = 1:N
 
-        τ_hist[k] = gg_torque(r_eci[k],ᴺqᴮ,params)
+        # τ_hist[k] = gg_torque(r_eci[k],ᴺqᴮ,params)
+        # @show k
+        # @infiltrate
+        τ_hist[k],active_faces[k],F_srp[k] = srp_torque(r_eci[k],epc[1],ᴺqᴮ,params)
 
     end
 
 
     τ_plot = mat_from_vec(τ_hist)
+    # F_plot = mat_from_vec(F_srp)
 
+
+    mat"
+    figure
+    hold on
+    plot($τ_plot')
+    hold off
+    "
     # mat"
     # figure
     # hold on
-    # plot($τ_plot')
+    # plot($F_plot')
     # hold off
     # "
+    mat"
+    figure
+    hold on
+    plot($active_faces)
+    hold off
+    "
+
     #
     # r_eci = mat_from_vec(r_eci)
     # mat"
@@ -197,28 +272,34 @@ function run_sim()
     Y_mag = abs.(y)
     Y_phase = imag(y)
 
-    mat"
-    figure
-    hold on
-    plot($f,$Y_mag)
-    %xlim([0 1e-3])
-    xlim([0 $(1/dt)/2])
-    hold off
-    "
+    # mat"
+    # figure
+    # hold on
+    # plot($f,$Y_mag)
+    # %xlim([0 1e-3])
+    # xlim([0 $(1/dt)/2])
+    # hold off
+    # "
+    #
+    # mat"
+    # figure
+    # hold on
+    # plot($τ_plot(2,:))
+    # hold off"
 
-    mat"
-    figure
-    hold on
-    plot($τ_plot(2,:))
-    hold off"
-
-    mat"
-    figure
-    hold on
-    plot($f,$Y_phase)
-    hold off
-    "
+    # mat"
+    # figure
+    # hold on
+    # plot($f,$Y_phase)
+    # hold off
+    # "
+    return F_srp
 
 end
 
-run_sim()
+F_srp = run_sim()
+
+
+for i = 1:6
+    @show cross(F_srp[1][i],r[i])
+end
