@@ -11,10 +11,10 @@ function run_SD_prop(dt)
 
 
     # Declare simulation initial Epoch
-    epc0 = Epoch(2014, 1, 1, 1, 0, 0, 0.0)
+    epc0 = Epoch(rand(2014:2017), rand(1:12), rand(1:27), rand(1:11), 0, 0, 0.0)
 
     # Declare initial state in terms of osculating orbital elements
-    oe0  = [R_EARTH + rand_in_range(300.0,800.0)*1e3, rand_in_range(0,0.01),
+    oe0  = [R_EARTH + rand_in_range(300.0,800.0)*1e3, rand_in_range(0,0.02),
             rand_in_range(0.0,89.9), 0, 0, 0]
 
     # Convert osculating elements to Cartesean state
@@ -352,12 +352,13 @@ end
 
 # y_avg = zeros(length(newf))
 # for i = 1:length(newf)
-y_avg = mean(newYs, dims = 2)
+# y_avg = mean(newYs, dims = 2)
+y_avg = maximum(newYs, dims = 2)
 y_avg[1]= 0.0
 return f, Ys, newf, newYs, y_avg
 end
 
-f, Ys, newf, newYs, y_avg = monte_carlo_driver(200)
+f, Ys, newf, newYs, y_avg = monte_carlo_driver(1000)
 
 mat"figure
 hold on
