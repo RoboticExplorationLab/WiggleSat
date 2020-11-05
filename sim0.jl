@@ -1,4 +1,4 @@
-# using Pkg; Pkg.activate(@__DIR__)
+using Pkg; Pkg.activate(@__DIR__)
 using LinearAlgebra
 using Attitude
 using SatelliteDynamics
@@ -307,16 +307,20 @@ end
 
 function monte_carlo_driver(trials)
 
+    # Y_vec = fill([],trials)
     # Y_mag =
 Ys = fill([],trials)
 fs = fill([],trials)
-mat"
-figure
-hold on"
+# mat"
+# figure
+# hold on"
 for i = 1:trials
     f, Y_mag, dt  = run_sim()
+    # @infiltrate
+    # error()
     for ii = 1:length(f)
-        if f[ii]>5e-3
+        # if f[ii]>5e-3
+        if f[ii]>0.5
             Y_mag[ii] = 0.0
         end
     end
@@ -324,21 +328,64 @@ for i = 1:trials
     Ys[i] = Y_mag
     fs[i] = f
 
-    mat"plot($f(2:end),$Y_mag(2:end))"
+    # mat"plot($f(2:end),$Y_mag(2:end))"
 end
 # f, Y_mag, dt = run_sim()
-mat"
-xlim([0 1e2])
-ylabel('Normalized Magnitude')
-xlabel('Frequency (Hz)')
-set(gca, 'XScale', 'log')
-%set(gca, 'YScale', 'log')
-hold off
-"
-return Y_mag
+# mat"
+# xlim([0 1e2])
+# ylabel('Normalized Magnitude')
+# xlabel('Frequency (Hz)')
+# set(gca, 'XScale', 'log')
+# %set(gca, 'YScale', 'log')
+# hold off
+# "
+newf = 0:1e-6:.5
+newYs = zeros(length(newf),length(Ys))
+for i = 1:length(Ys)
+    f = fs[i]
+    Y = Ys[i]
+    spl = Spline1D(f,Y;k=1)
+    newY = spl(newf)
+
+    newYs[:,i] = newY
 end
 
-Y_mag = monte_carlo_driver(200)
+# y_avg = zeros(length(newf))
+# for i = 1:length(newf)
+y_avg = mean(newYs, dims = 2)
+y_avg[1]= 0.0
+return f, Ys, newf, newYs, y_avg
+end
+
+f, Ys, newf, newYs, y_avg = monte_carlo_driver(200)
+
+mat"figure
+hold on
+plot($newf,$y_avg)
+set(gca, 'XScale', 'log')
+"
+mat"
+figure
+hold on
+plot($newYs)
+hold off
+"
+
+# newf = 0:1e-5:.5
+# newYs = fill(zeros(length(newf)),length(Ys))
+# for i = 1:lenght(Ys)
+#     f = fs[i]
+#     Y = Ys[i]
+#     spl = Spline1D(f,Y)
+#     newY = spl(newf)
+#
+#     newYs[i] = newY
+# end
+
+file = matopen("test.mat","w")
+write(file, "y_avg",y_avg)
+# write(file, "newf",newf)
+close(file)
 #
 #
 # for i = 1:6
