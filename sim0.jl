@@ -11,11 +11,11 @@ function run_SD_prop(dt)
 
 
     # Declare simulation initial Epoch
-    epc0 = Epoch(rand(2014:2017), rand(1:12), rand(1:27), rand(1:11), 0, 0, 0.0)
+    epc0 = Epoch(2014, 1, 1, 1, 0, 0, 0.0)
 
     # Declare initial state in terms of osculating orbital elements
-    oe0  = [R_EARTH + rand_in_range(400.0,600.0)*1e3, rand_in_range(0,0.03),
-            rand_in_range(0.0,89.0), 0, 0, 0]
+    oe0  = [R_EARTH + rand_in_range(300.0,800.0)*1e3, rand_in_range(0,0.01),
+            rand_in_range(0.0,89.9), 0, 0, 0]
 
     # Convert osculating elements to Cartesean state
     eci0 = sOSCtoCART(oe0, use_degrees=true)
@@ -211,9 +211,11 @@ end
 function create_spline(t,x)
 
     spl = Spline1D(t,x)
-    newx = 0:1:x[end]
-    newy = spl(newx)
-    return newx, newy
+    # @infiltrate
+    # error()
+    newt = 0:1:t[end]
+    newy = spl(newt)
+    return newy
 end
 
 
@@ -261,47 +263,13 @@ function run_sim()
     τ_plot = mat_from_vec(τ_hist)
     # F_plot = mat_from_vec(F_srp)
 
-
-    # mat"
-    # figure
-    # hold on
-    # title('Disturbance Torques (SRP + Drag + GG)')
-    # plot($t, $τ_plot')
-    # ylabel('Torque Nm')
-    # xlabel('Time (s)')
-    # hold off
-    # "
-    # mat"
-    # figure
-    # hold on
-    # plot($F_plot')
-    # hold off
-    # "
-    # mat"
-    # figure
-    # hold on
-    # plot($active_faces)
-    # hold off
-    # "
-
-    #
-    # r_eci = mat_from_vec(r_eci)
-    # mat"
-    # figure
-    # hold on
-    # plot3($r_eci(1,:),$r_eci(2,:),$r_eci(3,:) )
-    # hold off
-    # "
-    #
-    # mat"
-    # figure
-    # hold on
-    # plot($r_eci')
-    # hold off
-    # "
-    Y_mag3, f = fft_analysis(τ_plot[1,:],dt)
-    Y_mag2, f = fft_analysis(τ_plot[2,:],dt)
-    Y_mag1, f = fft_analysis(τ_plot[3,:],dt)
+    τ1 = create_spline(t,τ_plot[1,:])
+    τ2 = create_spline(t,τ_plot[2,:])
+    τ3 = create_spline(t,τ_plot[3,:])
+    dt = 1.0
+    Y_mag3, f = fft_analysis(τ1,dt)
+    Y_mag2, f = fft_analysis(τ2,dt)
+    Y_mag1, f = fft_analysis(τ3,dt)
     Y_mag = Y_mag1 + Y_mag2 + Y_mag3
     # x = τ_plot[2,:]
     # y = fft(x)
@@ -347,7 +315,12 @@ figure
 hold on"
 for i = 1:trials
     f, Y_mag, dt  = run_sim()
-
+    for ii = 1:length(f)
+        if f[ii]>5e-3
+            Y_mag[ii] = 0.0
+        end
+    end
+    Y_mag /= norm(Y_mag,Inf)
     Ys[i] = Y_mag
     fs[i] = f
 
@@ -355,8 +328,8 @@ for i = 1:trials
 end
 # f, Y_mag, dt = run_sim()
 mat"
-xlim([0 5e-3])
-ylabel('Magnitude')
+xlim([0 1e2])
+ylabel('Normalized Magnitude')
 xlabel('Frequency (Hz)')
 set(gca, 'XScale', 'log')
 %set(gca, 'YScale', 'log')
@@ -365,7 +338,7 @@ hold off
 return Y_mag
 end
 
-Y_mag = monte_carlo_driver(100)
+Y_mag = monte_carlo_driver(200)
 #
 #
 # for i = 1:6

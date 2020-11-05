@@ -11,17 +11,17 @@ function run_SD_prop(dt)
 
 
     # Declare simulation initial Epoch
-    epc0 = Epoch(rand(2014:2017), rand(1:12), rand(1:27), rand(1:11), 0, 0, 0.0)
+    epc0 = Epoch(2020, 5, 1, 1, 0, 0, 0.0)
 
     # Declare initial state in terms of osculating orbital elements
-    oe0  = [R_EARTH + rand_in_range(400.0,600.0)*1e3, rand_in_range(0,0.03),
-            rand_in_range(0.0,89.0), 0, 0, 0]
+    oe0  = [R_EARTH + rand_in_range(300.0,800.0)*1e3, rand_in_range(0,0.01),
+            rand_in_range(0.0,89.9), 0, 0, 0]
 
     # Convert osculating elements to Cartesean state
     eci0 = sOSCtoCART(oe0, use_degrees=true)
 
     # Set the propagation end time to one orbit period after the start
-    T    = 10.0*orbit_period(oe0[1])
+    T    = 0.2*orbit_period(oe0[1])
     epcf = epc0 + T
 
     # Create an EarthInertialState orbit propagagator
@@ -211,9 +211,11 @@ end
 function create_spline(t,x)
 
     spl = Spline1D(t,x)
-    newx = 0:1:x[end]
-    newy = spl(newx)
-    return newx, newy
+    # @infiltrate
+    # error()
+    newt = 0:1:t[end]
+    newy = spl(newt)
+    return newy
 end
 
 
@@ -248,6 +250,7 @@ function run_sim()
     N = length(r_eci)
 
     τ_hist = fill(zeros(3),N)
+    B_hist_b = fill(zeros(3),N)
     F_srp = fill(  fill(zeros(3),6)   ,N)
     active_faces = zeros(N)
 
@@ -255,53 +258,21 @@ function run_sim()
         τ_hist[k] += gg_torque(r_eci[k],ᴺqᴮ,params)
         τ_hist[k] += srp_torque(r_eci[k],epc[k],ᴺqᴮ,params)
         τ_hist[k] += aerodynamic_torque(r_eci[k],v_eci[k],epc[k],ᴺqᴮ,params)
+
+        B_hist_b[k] = dcm_from_q(ᴺqᴮ)'*IGRF13(r_eci[k],epc[k])
     end
 
 
     τ_plot = mat_from_vec(τ_hist)
     # F_plot = mat_from_vec(F_srp)
 
-
-    # mat"
-    # figure
-    # hold on
-    # title('Disturbance Torques (SRP + Drag + GG)')
-    # plot($t, $τ_plot')
-    # ylabel('Torque Nm')
-    # xlabel('Time (s)')
-    # hold off
-    # "
-    # mat"
-    # figure
-    # hold on
-    # plot($F_plot')
-    # hold off
-    # "
-    # mat"
-    # figure
-    # hold on
-    # plot($active_faces)
-    # hold off
-    # "
-
-    #
-    # r_eci = mat_from_vec(r_eci)
-    # mat"
-    # figure
-    # hold on
-    # plot3($r_eci(1,:),$r_eci(2,:),$r_eci(3,:) )
-    # hold off
-    # "
-    #
-    # mat"
-    # figure
-    # hold on
-    # plot($r_eci')
-    # hold off
-    # "
-    Y_mag3, f = fft_analysis(τ_plot[1,:],dt)
-    Y_mag2, f = fft_analysis(τ_plot[2,:],dt)
-    Y_mag1, f = fft_analysis(τ_plot[3,:],dt)
+    τ1 = create_spline(t,τ_plot[1,:])
+    τ2 = create_spline(t,τ_plot[2,:])
+    τ3 = create_spline(t,τ_plot[3,:])
+    dt = 1.0
+    Y_mag3, f = fft_analysis(τ1,dt)
+    Y_mag2, f = fft_analysis(τ2,dt)
+    Y_mag1, f = fft_analysis(τ3,dt)
     Y_mag = Y_mag1 + Y_mag2 + Y_mag3
     # x = τ_plot[2,:]
     # y = fft(x)
@@ -333,85 +304,35 @@ function run_sim()
     # plot($f,$Y_phase)
     # hold off
     # "
-    return f, Y_mag, dt
+    return τ_hist, B_hist_b
 
 end
 
-function monte_carlo_driver(trials)
+τ_hist, B_hist_b  = run_sim()
 
-    # Y_mag =
-Ys = fill([],trials)
-fs = fill([],trials)
-mat"
-figure
-hold on"
-for i = 1:trials
-    f, Y_mag, dt  = run_sim()
 
-    Ys[i] = Y_mag
-    fs[i] = f
-
-    mat"plot($f(2:end),$Y_mag(2:end))"
-end
-# f, Y_mag, dt = run_sim()
-mat"
-xlim([0 5e-3])
-ylabel('Magnitude')
-xlabel('Frequency (Hz)')
-set(gca, 'XScale', 'log')
-%set(gca, 'YScale', 'log')
-hold off
-"
-return Y_mag
-end
-
-Y_mag = monte_carlo_driver(100)
+# using JuMP
+# using OSQP
+# N = length(τ_hist)
 #
+# model = Model(OSQP.Optimizer)
 #
-# for i = 1:6
-#     @show cross(F_srp[1][i],r[i])
+# @variable(model, τ[1:3,1:N])
+# @variable(model, m[1:3,1:N])
+#
+# for i = 1:N
+#     @constraint(model,con, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] .== τ_hist[i])
 # end
 
-# # create spacecraft geometrical properties
-# faces, J = generate_geometry(.1,.2,.3)
-#
-# params  = (J = J,faces = faces)
-#
-# R_spec = params.faces.R_spec
-# R_diff = params.faces.R_diff
-# R_abs = params.faces.R_abs
-#
-# N_b = params.faces.normal_vecs
-# S = params.faces.areas
-# r = params.faces.r
-#
-# r_sun_eci = sun_position(epoch)
-#
-# # position vector from spacecraft to sun
-# sc_r_sun = (r_sun_eci - r_eci)
-#
-# # normalize and express in the body frame
-# ᴮQᴺ = transpose(dcm_from_q(ᴺqᴮ))
-# s = ᴮQᴺ*normalize(sc_r_sun)
-# # @show s
-# # Get dot products
-# I_vec = N_b'*s
-# # @show I_vec
-#
-# F_srp = fill(zeros(3),6)
-# τ_srp = zeros(3)
-# for i = 1:6
-#     # @show i
-#     @infiltrate
-#     error()
-#
-#     F_srp[i] = -P_SUN*S[i]*( 2*(R_diff/3 + R_spec*I_vec[i])*N_b[:,i] +
-#                 (1-R_spec)*s)*max(I_vec[i],0.0)
-#
-#     # @show F_srp
-#     τ_srp += cross(r[i],F_srp[i])
-#     # @infiltrate
-# end
-# # error()
-# # @show τ_srp
-# active_faces = sum(I_vec .> 0)
+using Convex, COSMO
+
+τ = Variable(3,N)
+m = Variable(3,N)
+
+cons = Constraint
+
+
+# cons = Constraint[ ]
+for i = 1:N
+    push!(cons, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i]  )
+end
