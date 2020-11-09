@@ -415,3 +415,18 @@ Y_mag = monte_carlo_driver(100)
 # # error()
 # # @show τ_srp
 # active_faces = sum(I_vec .> 0)
+
+
+
+
+
+
+x = 1:100
+y = randn(100)
+
+mat"
+figure
+hold on
+plot($x,$y)
+hold off
+"

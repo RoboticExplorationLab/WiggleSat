@@ -323,16 +323,38 @@ end
 # for i = 1:N
 #     @constraint(model,con, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] .== τ_hist[i])
 # end
+B_hist_b *= 1e7
+τ_hist *= 1e7
 
-using Convex, COSMO
+using Convex, COSMO, Mosek, MosekTools
 
 τ = Variable(3,N)
 m = Variable(3,N)
 
-cons = Constraint
+# cons = Constraint
 
+constraints = Constraint[skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i] for i in 1:N]
 
+problem = minimize(sumsquares(τ) + sumsquares(m), constraints)
+
+# solve!(problem, () -> COSMO.Optimizer(max_iter = 20000))
+solve!(problem, () -> Mosek.Optimizer)
 # cons = Constraint[ ]
-for i = 1:N
-    push!(cons, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i]  )
-end
+# for i = 1:N
+#     push!(cons, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i]  )
+# end
+
+τ = Convex.evaluate(τ)
+m = Convex.evaluate(m)
+
+mat"
+figure
+hold on
+plot($τ')
+hold off"
+
+mat"
+figure
+hold on
+plot($m')
+hold off"
