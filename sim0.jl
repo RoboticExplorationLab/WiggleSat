@@ -1,11 +1,11 @@
-using Pkg; Pkg.activate(@__DIR__)
+# using Pkg; Pkg.activate(@__DIR__)
 using LinearAlgebra
 using Attitude
 using SatelliteDynamics
 using Infiltrator
 using FFTW
 using MATLAB
-
+using Dierckx
 
 function run_SD_prop(dt)
 
@@ -166,7 +166,9 @@ function generate_geometry(length,width,height)
     W = width
     H = height
     volume = L*W*H
-    mass = volume*(1/0.01)
+    # mass = volume*(1/0.01)
+    # NOTE: this is the 6U mass
+    mass = 10.0
 
     # inertia
     J = (mass/12)*Array(I(3))
@@ -202,7 +204,7 @@ function generate_geometry(length,width,height)
 
     faces = (normal_vecs = faces_n, areas = faces_areas, r = r,
              R_spec = R_spec, R_diff = R_diff, R_abs  = R_abs,
-             Cd = 1.5)
+             Cd = 2.3)
 
     return faces, J
 end
@@ -237,7 +239,7 @@ function run_sim()
 
 
     # create spacecraft geometrical properties
-    faces, J = generate_geometry(.3,.1,.1)
+    faces, J = generate_geometry(.6,.1,.1)
 
     params  = (J = J,faces = faces)
     dt = 30.0
@@ -353,16 +355,16 @@ end
 # y_avg = zeros(length(newf))
 # for i = 1:length(newf)
 # y_avg = mean(newYs, dims = 2)
-y_avg = maximum(newYs, dims = 2)
-y_avg[1]= 0.0
-return f, Ys, newf, newYs, y_avg
+y_max = maximum(newYs, dims = 2)
+y_max[1]= 0.0
+return Ys, newf, newYs, y_max
 end
 
-f, Ys, newf, newYs, y_avg = monte_carlo_driver(1000)
+Ys, newf, newYs, y_max = monte_carlo_driver(1000)
 
 mat"figure
 hold on
-plot($newf,$y_avg)
+plot($newf,$y_max)
 set(gca, 'XScale', 'log')
 "
 mat"
@@ -372,67 +374,8 @@ plot($newYs)
 hold off
 "
 
-# newf = 0:1e-5:.5
-# newYs = fill(zeros(length(newf)),length(Ys))
-# for i = 1:lenght(Ys)
-#     f = fs[i]
-#     Y = Ys[i]
-#     spl = Spline1D(f,Y)
-#     newY = spl(newf)
-#
-#     newYs[i] = newY
-# end
 
-file = matopen("test.mat","w")
-write(file, "y_avg",y_avg)
-# write(file, "newf",newf)
+
+file = matopen("test_6U.mat","w")
+write(file, "y_max",y_max)
 close(file)
-#
-#
-# for i = 1:6
-#     @show cross(F_srp[1][i],r[i])
-# end
-
-# # create spacecraft geometrical properties
-# faces, J = generate_geometry(.1,.2,.3)
-#
-# params  = (J = J,faces = faces)
-#
-# R_spec = params.faces.R_spec
-# R_diff = params.faces.R_diff
-# R_abs = params.faces.R_abs
-#
-# N_b = params.faces.normal_vecs
-# S = params.faces.areas
-# r = params.faces.r
-#
-# r_sun_eci = sun_position(epoch)
-#
-# # position vector from spacecraft to sun
-# sc_r_sun = (r_sun_eci - r_eci)
-#
-# # normalize and express in the body frame
-# ᴮQᴺ = transpose(dcm_from_q(ᴺqᴮ))
-# s = ᴮQᴺ*normalize(sc_r_sun)
-# # @show s
-# # Get dot products
-# I_vec = N_b'*s
-# # @show I_vec
-#
-# F_srp = fill(zeros(3),6)
-# τ_srp = zeros(3)
-# for i = 1:6
-#     # @show i
-#     @infiltrate
-#     error()
-#
-#     F_srp[i] = -P_SUN*S[i]*( 2*(R_diff/3 + R_spec*I_vec[i])*N_b[:,i] +
-#                 (1-R_spec)*s)*max(I_vec[i],0.0)
-#
-#     # @show F_srp
-#     τ_srp += cross(r[i],F_srp[i])
-#     # @infiltrate
-# end
-# # error()
-# # @show τ_srp
-# active_faces = sum(I_vec .> 0)

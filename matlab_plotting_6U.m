@@ -1,8 +1,8 @@
 clear
 
 
-load test.mat
-y_avg = y_avg';
+load test_6U.mat
+y_avg = y_max';
 %
 newf = 0:1e-6:.5;
 
