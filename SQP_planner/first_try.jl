@@ -17,18 +17,40 @@ using Attitude, MATLAB
 #             py + v*dt*sin(θ);
 #             θ  + dt*dθ]
 # end
+# function discrete_dynamics(x,u,dt)
+#     px = x[1]
+#     py = x[2]
+#     vx = x[3]
+#     vy = x[4]
+#
+#     ax = u[1]
+#     ay = u[2]
+#     #update the state
+#     return [vx;vy;ax;ay]
+# end
 function discrete_dynamics(x,u,dt)
-    px = x[1]
-    py = x[2]
-    vx = x[3]
-    vy = x[4]
-
-    ax = u[1]
-    ay = u[2]
-    #update the state
-    return [vx;vy;ax;ay]
+    return rk4(dynamics,u,x,dt,0.0)
 end
 
+function dynamics(x,u,t)
+    p = SVector(x[1],x[2],x[3])
+    ω = SVector(x[4],x[5],x[6])
+    return [pdot_from_w(p,ω);invJ*(u - ω × (J*ω))]
+end
+
+function rk4(f, u, x_n, h,t_n)
+
+    x_n = SVector{nx}(x_n)
+
+    k1 = h*f(x_n,u,t_n)
+    k2 = h*f(x_n+k1/2, u,t_n + h/2)
+    k3 = h*f(x_n+k2/2, u, t_n + h/2)
+    k4 = h*f(x_n+k3, u, t_n + h)
+
+
+    return (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
+
+end
 
 
 
@@ -67,10 +89,10 @@ function sparse_jac_con!(J,z)
 end
 
 
-nx = 4
-nu = 2
-T = 500
-dt = 0.2
+nx = 6
+nu = 3
+T = 200
+dt = 0.5
 nz = (T)*nx + (T-1)*nu
 nc = (T-1)*nx
 
@@ -78,6 +100,8 @@ idx_x = [(t-1)*(nx+nu) .+ (1:nx) for t = 1:T]
 idx_u = [(t-1)*(nx+nu) .+ ((nx+1):(nx+nu)) for t = 1:T-1]
 idx_cons = [(t-1)*(nx) .+ (1:nx) for t = 1:(T-1)]
 
+J = Diagonal([1;2;3])
+invJ = inv(J)
 function runit()
 
 
@@ -89,13 +113,15 @@ sparse_jac_con!(J,z)
 # @show norm(Jc-J)
 
 # initial conditions
-x0 = [20;30;0;0]
+ϕ = deg2rad(110)*normalize(randn(3))
+
+x0 = [p_from_phi(ϕ);0;0;0]
 # create OSQP problem
-z = [x0;0.001*randn(nz-nx)]
+z = 0.0001*randn(nz)
 
 Q = sparse(10*I(nx))
 Qf = copy(Q)
-R = sparse(10*I(nu))
+R = sparse(1000*I(nu))
 P = blockdiag(kron(sparse(I(T-1)),blockdiag(Q,R)),Qf)
 q = zeros(nz)
 A = spzeros(nc,nz)
@@ -116,7 +142,7 @@ m = OSQP.Model()
 
 OSQP.setup!(m; P = P, q=q, A = A, l = lower, u = upper,eps_abs = 1e-8,eps_rel = 1e-8)
 
-for i = 1:1
+for i = 1:20
 
     results = OSQP.solve!(m)
     z=copy(results.x)
@@ -166,12 +192,12 @@ hold on
 plot($Um')
 hold off
 "
-mat"
-figure
-hold on
-plot($Xm(1,:),$Xm(2,:))
-hold off
-"
+# mat"
+# figure
+# hold on
+# plot($Xm(1,:),$Xm(2,:))
+# hold off
+# "
 
 
 @show norm(constraint(z))
