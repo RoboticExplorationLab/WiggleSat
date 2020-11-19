@@ -62,9 +62,9 @@ end
 function sparse_jac_con2(z)
     return J = sparse(I,nz,nz)
 end
-function con2_bounds()
-    lo =  [kron(ones(T-1),[x_min;u_min]);x_min]
-    up =  [kron(ones(T-1),[x_max;u_max]);x_max]
+function con2_bounds(x0)
+    lo =  [x0;kron(ones(T-1),[u_min;x_min])]
+    up =  [x0;kron(ones(T-1),[u_max;x_max])]
     return lo, up
 end
 
@@ -97,7 +97,7 @@ x0 = [p_from_phi(ϕ);0;0;0]
 z = 0.0001*randn(nz)
 
 Q = sparse(10*I(nx))
-Qf = copy(Q)
+Qf = 100*copy(Q)
 R = sparse(100*I(nu))
 P = blockdiag(kron(sparse(I(T-1)),blockdiag(Q,R)),Qf)
 q = zeros(nz)
@@ -108,13 +108,13 @@ sparse_jac_con!(A,z)
 
 # equality
 A_lower = spzeros(nx,nz)
-A_lower[1:nx,1:nx] = sparse(I(nx))
+# A_lower[1:nx,1:nx] = sparse(I(nx))
 upper = (A*z - constraint(z))
 lower = copy(upper)
-A = [A; A_lower;sparse_jac_con2(z)]
-lo,up = con2_bounds()
-upper = [upper;x0;up]
-lower = [lower;x0;lo]
+A = [A;sparse_jac_con2(z)]
+lo,up = con2_bounds(x0)
+upper = [upper;up]
+lower = [lower;lo]
 # osqp stuff
 m = OSQP.Model()
 
@@ -130,14 +130,14 @@ for i = 1:20
     # get jacobian
     sparse_jac_con!(A,z)
     # equality
-    A_lower = spzeros(nx,nz)
-    A_lower[1:nx,1:nx] = sparse(I(nx))
+    # A_lower = spzeros(nx,nz)
+    # A_lower[1:nx,1:nx] = sparse(I(nx))
     upper = (A*z - constraint(z))
     lower = copy(upper)
-    A = [A; A_lower;sparse_jac_con2(z)]
-    lo,up = con2_bounds()
-    upper = [upper;x0;up]
-    lower = [lower;x0;lo]
+    A = [A;sparse_jac_con2(z)]
+    lo,up = con2_bounds(x0)
+    upper = [upper;up]
+    lower = [lower;lo]
 
     # @infiltrate
     # error()
