@@ -89,49 +89,22 @@ u_max = 0.01*ones(nu)
 
 function runit()
 
-# initial conditions
-ϕ = deg2rad(110)*normalize(randn(3))
+    # initial conditions
+    ϕ = deg2rad(110)*normalize(randn(3))
 
-x0 = [p_from_phi(ϕ);0;0;0]
-# create OSQP problem
-z = 0.0001*randn(nz)
+    x0 = [p_from_phi(ϕ);0;0;0]
+    # create OSQP problem
+    z = 0.0001*randn(nz)
 
-Q = sparse(10*I(nx))
-Qf = 100*copy(Q)
-R = sparse(100*I(nu))
-P = blockdiag(kron(sparse(I(T-1)),blockdiag(Q,R)),Qf)
-q = zeros(nz)
-A = spzeros(nc,nz)
-
-# get jacobian
-sparse_jac_con!(A,z)
-
-# equality
-A_lower = spzeros(nx,nz)
-# A_lower[1:nx,1:nx] = sparse(I(nx))
-upper = (A*z - constraint(z))
-lower = copy(upper)
-A = [A;sparse_jac_con2(z)]
-lo,up = con2_bounds(x0)
-upper = [upper;up]
-lower = [lower;lo]
-# osqp stuff
-m = OSQP.Model()
-
-OSQP.setup!(m; P = P, q=q, A = A, l = lower, u = upper,eps_abs = 1e-4,eps_rel = 1e-4)
-
-for i = 1:20
-
-    results = OSQP.solve!(m)
-    z=copy(results.x)
-
-    # generate new stuff
+    Q = sparse(10*I(nx))
+    Qf = 100*copy(Q)
+    R = sparse(100*I(nu))
+    P = blockdiag(kron(sparse(I(T-1)),blockdiag(Q,R)),Qf)
+    q = zeros(nz)
     A = spzeros(nc,nz)
+
     # get jacobian
     sparse_jac_con!(A,z)
-    # equality
-    # A_lower = spzeros(nx,nz)
-    # A_lower[1:nx,1:nx] = sparse(I(nx))
     upper = (A*z - constraint(z))
     lower = copy(upper)
     A = [A;sparse_jac_con2(z)]
@@ -139,56 +112,65 @@ for i = 1:20
     upper = [upper;up]
     lower = [lower;lo]
 
-    # @infiltrate
-    # error()
-    OSQP.update!(m,l = lower, u = upper)
-    OSQP.update!(m, Ax = A.nzval, Ax_idx = (collect( 1: length(A.nzval))))
+    # osqp stuff
+    m = OSQP.Model()
 
-end
+    OSQP.setup!(m; P = P, q=q, A = A, l = lower, u = upper,eps_abs = 1e-4,eps_rel = 1e-4)
 
+    for i = 1:20
 
-X = fill(zeros(nx),T)
-U = fill(zeros(nu),T-1)
-for i = 1:T-1
-    X[i] = z[idx_x[i]]
-    U[i] = z[idx_u[i]]
-end
-X[T] = z[idx_x[T]]
+        A = spzeros(nc,nz)
+        sparse_jac_con!(A,z)
+        upper = (A*z - constraint(z))
+        lower = copy(upper)
+        A = [A;sparse_jac_con2(z)]
+        lo,up = con2_bounds(x0)
+        upper = [upper;up]
+        lower = [lower;lo]
 
-
-Xm = mat_from_vec(X)
-Um = mat_from_vec(U)
-
-mat"
-figure
-hold on
-title('MRP')
-plot($Xm(1:3,:)')
-hold off
-"
-mat"
-figure
-hold on
-title('Angular Velocity')
-plot($Xm(4:6,:)')
-hold off
-"
-mat"
-figure
-hold on
-title('Controls')
-plot($Um')
-hold off
-"
-# mat"
-# figure
-# hold on
-# plot($Xm(1,:),$Xm(2,:))
-# hold off
-# "
+        OSQP.update!(m,l = lower, u = upper)
+        OSQP.update!(m, Ax = A.nzval, Ax_idx = (collect( 1: length(A.nzval))))
+        results = OSQP.solve!(m)
+        z=copy(results.x)
+    end
 
 
-@show norm(constraint(z))
+    X = fill(zeros(nx),T)
+    U = fill(zeros(nu),T-1)
+    for i = 1:T-1
+        X[i] = z[idx_x[i]]
+        U[i] = z[idx_u[i]]
+    end
+    X[T] = z[idx_x[T]]
+
+
+    Xm = mat_from_vec(X)
+    Um = mat_from_vec(U)
+
+    mat"
+    figure
+    hold on
+    title('MRP')
+    plot($Xm(1:3,:)')
+    hold off
+    "
+    mat"
+    figure
+    hold on
+    title('Angular Velocity')
+    plot($Xm(4:6,:)')
+    hold off
+    "
+    mat"
+    figure
+    hold on
+    title('Controls')
+    plot($Um')
+    hold off
+    "
+
+
+    @show norm(constraint(z))
 
 
 end
