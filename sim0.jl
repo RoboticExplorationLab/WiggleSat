@@ -367,14 +367,15 @@ hold on
 plot($newf,$y_max)
 set(gca, 'XScale', 'log')
 "
-mat"
-figure
-hold on
-plot($newYs)
-hold off
-"
+# mat"
+# figure
+# hold on
+# plot($newYs)
+# hold off
+# "
 
 
+using MAT
 
 file = matopen("test_6U.mat","w")
 write(file, "y_max",y_max)
