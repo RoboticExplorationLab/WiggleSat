@@ -5,55 +5,23 @@ using Infiltrator
 using BenchmarkTools
 using StaticArrays
 using Attitude, MATLAB
-# function discrete_dynamics(x,u,dt)
-#     px = x[1]
-#     py = x[2]
-#     θ  = x[3]
-#
-#     dθ = u[1]
-#     v = u[2]
-#     #update the state
-#     return [px + v*dt*cos(θ);
-#             py + v*dt*sin(θ);
-#             θ  + dt*dθ]
-# end
-# function discrete_dynamics(x,u,dt)
-#     px = x[1]
-#     py = x[2]
-#     vx = x[3]
-#     vy = x[4]
-#
-#     ax = u[1]
-#     ay = u[2]
-#     #update the state
-#     return [vx;vy;ax;ay]
-# end
+
 function discrete_dynamics(x,u,dt)
     return rk4(dynamics,u,x,dt,0.0)
 end
-
 function dynamics(x,u,t)
     p = SVector(x[1],x[2],x[3])
     ω = SVector(x[4],x[5],x[6])
     return [pdot_from_w(p,ω);invJ*(u - ω × (J*ω))]
 end
-
 function rk4(f, u, x_n, h,t_n)
-
     x_n = SVector{nx}(x_n)
-
     k1 = h*f(x_n,u,t_n)
     k2 = h*f(x_n+k1/2, u,t_n + h/2)
     k3 = h*f(x_n+k2/2, u, t_n + h/2)
     k4 = h*f(x_n+k3, u, t_n + h)
-
-
     return (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
-
 end
-
-
-
 
 function constraint(z)
 
