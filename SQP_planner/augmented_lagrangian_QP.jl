@@ -52,8 +52,6 @@ function λ_update!(λ,x,μ)
         λ[i] = max(0,λ[i] + μ[i]*c1[i])
     end
 end
-
-
 function aug()
 
     x = zeros(n)

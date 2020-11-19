@@ -33,6 +33,14 @@ function constraint(z)
     end
     return c
 end
+# function constraint2(z)
+#     c2 = zeros(eltype(z),(T-1)*nu)
+#     for i = 1:(T-1)
+#         ut   = z[idx_u[i]]
+#         c[idx_cons2[i]] = ut - u_max*ones(3)
+#     end
+#     return c
+# end
 
 function sparse_jac_con!(J,z)
     for i = 1:T-1
@@ -49,7 +57,15 @@ function sparse_jac_con!(J,z)
         J[idx_cons[i],idx_u[i]] = -ForwardDiff.jacobian(B_fwd_fx,u)
         J[idx_cons[i],idx_x[i+1]] = I(nx)
     end
-    return J
+    # return J
+end
+function sparse_jac_con2(z)
+    return J = sparse(I,nz,nz)
+end
+function con2_bounds()
+    lo =  [kron(ones(T-1),[x_min;u_min]);x_min]
+    up =  [kron(ones(T-1),[x_max;u_max]);x_max]
+    return lo, up
 end
 
 
@@ -63,9 +79,14 @@ nc = (T-1)*nx
 idx_x = [(t-1)*(nx+nu) .+ (1:nx) for t = 1:T]
 idx_u = [(t-1)*(nx+nu) .+ ((nx+1):(nx+nu)) for t = 1:T-1]
 idx_cons = [(t-1)*(nx) .+ (1:nx) for t = 1:(T-1)]
-
+idx_cons2 = [(t-1)*(nu) .+ (1:nu) for t = 1:(T-1)]
 J = Diagonal([1;2;3])
 invJ = inv(J)
+x_min = -Inf*ones(nx)
+x_max = Inf*ones(nx)
+u_min = -.01*ones(nu)
+u_max = 0.01*ones(nu)
+
 function runit()
 
 # initial conditions
@@ -77,7 +98,7 @@ z = 0.0001*randn(nz)
 
 Q = sparse(10*I(nx))
 Qf = copy(Q)
-R = sparse(1000*I(nu))
+R = sparse(100*I(nu))
 P = blockdiag(kron(sparse(I(T-1)),blockdiag(Q,R)),Qf)
 q = zeros(nz)
 A = spzeros(nc,nz)
@@ -90,9 +111,10 @@ A_lower = spzeros(nx,nz)
 A_lower[1:nx,1:nx] = sparse(I(nx))
 upper = (A*z - constraint(z))
 lower = copy(upper)
-A = [A; A_lower]
-upper = [upper;x0]
-lower = [lower;x0]
+A = [A; A_lower;sparse_jac_con2(z)]
+lo,up = con2_bounds()
+upper = [upper;x0;up]
+lower = [lower;x0;lo]
 # osqp stuff
 m = OSQP.Model()
 
@@ -112,9 +134,10 @@ for i = 1:20
     A_lower[1:nx,1:nx] = sparse(I(nx))
     upper = (A*z - constraint(z))
     lower = copy(upper)
-    A = [A; A_lower]
-    upper = [upper;x0]
-    lower = [lower;x0]
+    A = [A; A_lower;sparse_jac_con2(z)]
+    lo,up = con2_bounds()
+    upper = [upper;x0;up]
+    lower = [lower;x0;lo]
 
     # @infiltrate
     # error()
@@ -139,12 +162,21 @@ Um = mat_from_vec(U)
 mat"
 figure
 hold on
-plot($Xm')
+title('MRP')
+plot($Xm(1:3,:)')
 hold off
 "
 mat"
 figure
 hold on
+title('Angular Velocity')
+plot($Xm(4:6,:)')
+hold off
+"
+mat"
+figure
+hold on
+title('Controls')
 plot($Um')
 hold off
 "
