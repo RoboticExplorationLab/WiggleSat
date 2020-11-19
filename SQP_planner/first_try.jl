@@ -91,7 +91,7 @@ end
 
 nx = 6
 nu = 3
-T = 200
+T = 100
 dt = 0.5
 nz = (T)*nx + (T-1)*nu
 nc = (T-1)*nx
@@ -140,7 +140,7 @@ lower = [lower;x0]
 # osqp stuff
 m = OSQP.Model()
 
-OSQP.setup!(m; P = P, q=q, A = A, l = lower, u = upper,eps_abs = 1e-8,eps_rel = 1e-8)
+OSQP.setup!(m; P = P, q=q, A = A, l = lower, u = upper,eps_abs = 1e-4,eps_rel = 1e-4)
 
 for i = 1:20
 
