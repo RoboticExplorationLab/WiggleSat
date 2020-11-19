@@ -24,18 +24,14 @@ function rk4(f, u, x_n, h,t_n)
 end
 
 function constraint(z)
-
     c = zeros(eltype(z),(T-1)*nx)
-
     for i = 1:(T-1)
         xt   = z[idx_x[i]]
         ut   = z[idx_u[i]]
         xtp1 = z[idx_x[i+1]]
-
         c[idx_cons[i]] = xtp1 - discrete_dynamics(xt,ut,dt)
     end
     return c
-
 end
 
 function sparse_jac_con!(J,z)

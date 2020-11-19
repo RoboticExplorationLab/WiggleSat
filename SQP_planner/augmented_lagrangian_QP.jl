@@ -72,10 +72,11 @@ function aug()
         H = ForwardDiff.hessian(_L,x)
         g = ForwardDiff.gradient(_L,x)
 
-        # this is where the problem is solved
+        #-------------------------------------------
+        # this is where the problem is solved (OSQP)
         v = - H\g
         x = x +v
-
+        #-------------------------------------------
         λ_update!(λ,x,μ)
 
         μ *= ϕ
