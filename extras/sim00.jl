@@ -21,7 +21,7 @@ function run_SD_prop(dt)
     eci0 = sOSCtoCART(oe0, use_degrees=true)
 
     # Set the propagation end time to one orbit period after the start
-    T    = 1.5*orbit_period(oe0[1])
+    T    = 2.6*orbit_period(oe0[1])
     epcf = epc0 + T
 
     # Create an EarthInertialState orbit propagagator

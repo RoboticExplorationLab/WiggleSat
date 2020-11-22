@@ -3,7 +3,7 @@ using OSQP
 using Mosek
 using MosekTools
 using COSMO
-@load "/Users/kevintracy/devel/WiggleSat/convex_planner/orbit_data.jld2" τ_hist B_hist_b J
+@load "/Users/kevintracy/devel/WiggleSat/convex_planner/orbit_data_2.jld2" τ_hist B_hist_b J
 
 N = length(τ_hist)
 dt = 10.0
@@ -41,7 +41,7 @@ end
 
 # make sure there is no mag torque during eclipse
 for i = 1:N-1
-    if i >= 356 && i<=569
+    if (i >= 356 && i<=569) || (i >= 930 && i<=1141)
         @constraint(model, m[:,i] .== 0)
     else
         @constraint(model, m[:,i] .<=  0.01)
