@@ -238,8 +238,8 @@ function run_sim()
 
     t, epc, r_eci, v_eci = run_SD_prop(dt)
 
-    ᴺqᴮ = randq()
-    # ᴺqᴮ = [0;0;0;1]
+    # ᴺqᴮ = randq()
+    ᴺqᴮ = [0;0;0;1]
 
     N = length(r_eci)
 

@@ -4,7 +4,7 @@ using Convex, MosekTools, Mosek, Attitude, COSMO
 @load "/Users/kevintracy/devel/WiggleSat/convex_planner/orbit_data.jld2" τ_hist B_hist_b J
 
 
-G = 1e7
+G = 1e7*inv(J)
 
 J_arm = 0.125
 
@@ -48,13 +48,21 @@ for i = 356:569
     push!(cons, m[:,i] == zeros(3))
 end
 
-# add magnetic moments constraints
+# add control constraints
 for i = 1:N-1
-    push!(cons, m <= 0.05)
-    push!(cons, m >= -0.05)
+    # magnetic moment constraints
+    push!(cons, m <= 0.01)
+    push!(cons, m >= -0.01)
 end
 
-prob = minimize( sumsquares(ϕ) + sumsquares(ω) + sumsquares(θ) +
+# add state constraints
+for i = 1:N
+    # Arm constraints
+    push!(cons, θ <= 3.141592653589793)
+    push!(cons, θ >= -3.141592653589793)
+end
+
+prob = minimize( sumsquares(ϕ) + sumsquares(ω) + 0.001*sumsquares(θ) +
                  sumsquares(θ_dot) + sumsquares(m) + sumsquares(α) ,cons)
 
 
