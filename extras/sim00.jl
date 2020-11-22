@@ -6,7 +6,7 @@ using Infiltrator
 using FFTW
 using MATLAB
 
-
+include("/Users/kevintracy/devel/WiggleSat/mag_field.jl")
 function run_SD_prop(dt)
 
 
@@ -14,14 +14,14 @@ function run_SD_prop(dt)
     epc0 = Epoch(2020, 5, 1, 1, 0, 0, 0.0)
 
     # Declare initial state in terms of osculating orbital elements
-    oe0  = [R_EARTH + rand_in_range(300.0,800.0)*1e3, rand_in_range(0,0.01),
-            rand_in_range(0.0,89.9), 0, 0, 0]
+    oe0  = [R_EARTH + 550*1e3, 0.0000,
+            45.6, 0, 0, 110]
 
     # Convert osculating elements to Cartesean state
     eci0 = sOSCtoCART(oe0, use_degrees=true)
 
     # Set the propagation end time to one orbit period after the start
-    T    = 0.2*orbit_period(oe0[1])
+    T    = 1.5*orbit_period(oe0[1])
     epcf = epc0 + T
 
     # Create an EarthInertialState orbit propagagator
@@ -141,14 +141,8 @@ function sample_inertia(J,deg_std,percent_std)
     E = eigen(J)
     S = @views E.vectors
     D = @views E.values
-    # scale moments
-    # @infiltrate
-    # error()
-    J_new = S * Diagonal(((1 .+(percent_std/100)*randn(3)) .* D)) * S'
 
-    # J_new = E.vectors*
-    #         Diagonal(((1 .+(percent_std/100)*randn(3)) .* E.values))
-    #         *E.vectors'
+    J_new = S * Diagonal(((1 .+(percent_std/100)*randn(3)) .* D)) * S'
 
     # rotate
     R = dcm_from_phi(deg2rad(deg_std)*randn(3))
@@ -240,7 +234,7 @@ function run_sim()
     faces, J = generate_geometry(.3,.1,.1)
 
     params  = (J = J,faces = faces)
-    dt = 30.0
+    dt = 10.0
 
     t, epc, r_eci, v_eci = run_SD_prop(dt)
 
@@ -249,31 +243,39 @@ function run_sim()
 
     N = length(r_eci)
 
+    τ_hist_srp = fill(zeros(3),N)
+    τ_hist_gg = fill(zeros(3),N)
+    τ_hist_aero = fill(zeros(3),N)
     τ_hist = fill(zeros(3),N)
     B_hist_b = fill(zeros(3),N)
+    B_hist_eci = fill(zeros(3),N)
     F_srp = fill(  fill(zeros(3),6)   ,N)
     active_faces = zeros(N)
 
     for k = 1:N
-        τ_hist[k] += gg_torque(r_eci[k],ᴺqᴮ,params)
-        τ_hist[k] += srp_torque(r_eci[k],epc[k],ᴺqᴮ,params)
-        τ_hist[k] += aerodynamic_torque(r_eci[k],v_eci[k],epc[k],ᴺqᴮ,params)
-
-        B_hist_b[k] = dcm_from_q(ᴺqᴮ)'*IGRF13(r_eci[k],epc[k])
+        τ_hist_gg[k] = gg_torque(r_eci[k],ᴺqᴮ,params)
+        τ_hist_srp[k] = srp_torque(r_eci[k],epc[k],ᴺqᴮ,params)
+        τ_hist_aero[k] = aerodynamic_torque(r_eci[k],v_eci[k],epc[k],ᴺqᴮ,params)
+        τ_hist[k] = τ_hist_gg[k] + τ_hist_srp[k] + τ_hist_aero[k]
+        B_hist_eci[k] = IGRF13(r_eci[k],epc[k])
+        B_hist_b[k] = dcm_from_q(ᴺqᴮ)'*B_hist_eci[k]
     end
 
 
     τ_plot = mat_from_vec(τ_hist)
+    τ_srp = mat_from_vec(τ_hist_srp)
+    τ_gg = mat_from_vec(τ_hist_gg)
+    τ_aero = mat_from_vec(τ_hist_aero)
     # F_plot = mat_from_vec(F_srp)
 
-    τ1 = create_spline(t,τ_plot[1,:])
-    τ2 = create_spline(t,τ_plot[2,:])
-    τ3 = create_spline(t,τ_plot[3,:])
-    dt = 1.0
-    Y_mag3, f = fft_analysis(τ1,dt)
-    Y_mag2, f = fft_analysis(τ2,dt)
-    Y_mag1, f = fft_analysis(τ3,dt)
-    Y_mag = Y_mag1 + Y_mag2 + Y_mag3
+    # τ1 = create_spline(t,τ_plot[1,:])
+    # τ2 = create_spline(t,τ_plot[2,:])
+    # τ3 = create_spline(t,τ_plot[3,:])
+    # dt = 1.0
+    # Y_mag3, f = fft_analysis(τ1,dt)
+    # Y_mag2, f = fft_analysis(τ2,dt)
+    # Y_mag1, f = fft_analysis(τ3,dt)
+    # Y_mag = Y_mag1 + Y_mag2 + Y_mag3
     # x = τ_plot[2,:]
     # y = fft(x)
     # f = (0:length(y)-1)*(1/dt)/length(y)
@@ -292,25 +294,46 @@ function run_sim()
     # hold off
     # "
     #
-    # mat"
-    # figure
-    # hold on
-    # plot($τ_plot(2,:))
-    # hold off"
-
+    mat"
+    figure
+    hold on
+    plot($τ_plot')
+    hold off"
+    mat"
+    figure
+    title('SRP')
+    hold on
+    plot($τ_srp')
+    hold off"
+    mat"
+    figure
+    title('Aero')
+    hold on
+    plot($τ_aero')
+    hold off"
+    mat"
+    figure
+    title('GG')
+    hold on
+    plot($τ_gg')
+    hold off"
     # mat"
     # figure
     # hold on
     # plot($f,$Y_phase)
     # hold off
     # "
-    return τ_hist, B_hist_b
+    return τ_hist, B_hist_b, B_hist_eci, τ_aero, τ_gg, τ_srp, params.J
 
 end
 
-τ_hist, B_hist_b  = run_sim()
+τ_hist, B_hist_b, B_hist_eci, τ_aero, τ_gg, τ_srp, J = run_sim()
 
+using JLD2
 
+@save "orbit_data.jld2" τ_hist B_hist_b J
+
+#
 # using JuMP
 # using OSQP
 # N = length(τ_hist)
@@ -321,40 +344,42 @@ end
 # @variable(model, m[1:3,1:N])
 #
 # for i = 1:N
-#     @constraint(model,con, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] .== τ_hist[i])
+#     @constraint(model, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] .== τ_hist[i])
 # end
-B_hist_b *= 1e7
-τ_hist *= 1e7
-
-using Convex, COSMO, Mosek, MosekTools
-
-τ = Variable(3,N)
-m = Variable(3,N)
-
-# cons = Constraint
-
-constraints = Constraint[skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i] for i in 1:N]
-
-problem = minimize(sumsquares(τ) + sumsquares(m), constraints)
-
-# solve!(problem, () -> COSMO.Optimizer(max_iter = 20000))
-solve!(problem, () -> Mosek.Optimizer)
-# cons = Constraint[ ]
-# for i = 1:N
-#     push!(cons, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i]  )
-# end
-
-τ = Convex.evaluate(τ)
-m = Convex.evaluate(m)
-
-mat"
-figure
-hold on
-plot($τ')
-hold off"
-
-mat"
-figure
-hold on
-plot($m')
-hold off"
+#
+# optimize!(model)
+# B_hist_b *= 1e7
+# τ_hist *= 1e7
+#
+# using Convex, COSMO, Mosek, MosekTools
+#
+# τ = Variable(3,N)
+# m = Variable(3,N)
+#
+# # cons = Constraint
+#
+# constraints = Constraint[skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i] for i in 1:N]
+#
+# problem = minimize(sumsquares(τ) + sumsquares(m), constraints)
+#
+# # solve!(problem, () -> COSMO.Optimizer(max_iter = 20000))
+# solve!(problem, () -> Mosek.Optimizer)
+# # cons = Constraint[ ]
+# # for i = 1:N
+# #     push!(cons, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i]  )
+# # end
+#
+# τ = Convex.evaluate(τ)
+# m = Convex.evaluate(m)
+#
+# mat"
+# figure
+# hold on
+# plot($τ')
+# hold off"
+#
+# mat"
+# figure
+# hold on
+# plot($m')
+# hold off"

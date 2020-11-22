@@ -8,7 +8,7 @@ using MeshCat, MeshCatMechanisms
 
 urdf = "/Users/kevintracy/julia_research/urdf_multibody/3armsc.xml"
 
-# rob = parse_urdf(urdf,floating = true)
+
 rob = parse_urdf(urdf,gravity = [0.0,0.0,0.0],floating = true)
 
 state = MechanismState(rob)
