@@ -9,8 +9,8 @@ N = length(τ_hist)
 dt = 10.0
 tol = 1e-9
 model = Model(Mosek.Optimizer)
-set_optimizer_attribute(model, "MSK_DPAR_INTPNT_CO_TOL_DFEAS",1e-9)
-set_optimizer_attribute(model, "MSK_DPAR_INTPNT_CO_TOL_REL_GAP",1e-9)
+set_optimizer_attribute(model, "MSK_DPAR_INTPNT_CO_TOL_DFEAS",1e-12)
+set_optimizer_attribute(model, "MSK_DPAR_INTPNT_CO_TOL_REL_GAP",1e-12)
 
 # model = Model(COSMO.Optimizer)
 # set_optimizer_attribute(model, "max_iter",20000)
@@ -50,9 +50,13 @@ for i = 1:N-1
 end
 
 # dynamics of the arm
+A = Array([zeros(3,3) I(3);zeros(3,6)])
+B = Array([zeros(3,3);I(3)])
+exp_discrete = exp([A B; zeros(3,9)]*dt)
+Ad = exp_discrete[1:6,1:6]
+Bd = exp_discrete[1:6,7:9]
 for i = 1:N-1
-    @constraint(model,θ[:,i+1] .== θ[:,i] + dt*θ̇[:,i])
-    @constraint(model,θ̇[:,i+1] .== θ̇[:,i] + dt*α[:,i])
+    @constraint(model, [θ[:,i+1];θ̇[:,i+1]] .== Ad*[θ[:,i];θ̇[:,i]] + Bd*α[:,i] )
 end
 
 # initial conditions
