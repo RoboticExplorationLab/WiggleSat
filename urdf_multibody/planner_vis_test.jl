@@ -27,11 +27,3 @@ for ii =1:length(ts)
 end
 
 MeshCatMechanisms.animate(mvis, ts, qs2; realtimerate = 500.)
-
-
-
-X = fill(zeros(4),10)
-for i = 1:10
-    X[i][1:2] = [3;4.0]
-    X[i][3:4] = randn(2)
-end

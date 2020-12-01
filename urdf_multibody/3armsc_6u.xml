@@ -1,0 +1,97 @@
+<robot name="multipleshapes">
+
+
+  <link name="sc_bus">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="10.0"/>
+      <inertia ixx="1.66667"  ixy="0"  ixz="0" iyy="8.33333" iyz="0" izz="8.33333" />
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="6.0 1.0 1.0"/>
+      </geometry>
+    </visual>
+  </link>
+
+
+ <link name="x_arm_link">
+   <inertial>
+     <origin xyz="0 0 3" rpy="0 0 0"/>
+     <mass value="2.0"/>
+     <inertia ixx="1.50667"  ixy="0"  ixz="0" iyy="1.50667" iyz="0" izz="0.0133333" />
+   </inertial>
+
+   <visual>
+     <origin xyz="1.5 0 1.5" rpy="0 0 0" />
+     <geometry>
+       <box size=".2 .2 3" />
+     </geometry>
+     <material name="Cyan">
+       <color rgba="0 1.0 1.0 1.0"/>
+     </material>
+   </visual>
+
+ </link>
+
+ <link name="y_arm_link">
+   <inertial>
+     <origin xyz="0 0 1.5" rpy="0 0 0"/>
+     <mass value="2.0"/>
+     <inertia ixx="1.50667"  ixy="0"  ixz="0" iyy="1.50667" iyz="0" izz="0.0133333" />
+   </inertial>
+
+   <visual>
+     <origin xyz="0 0 1.5" rpy="0 0 0" />
+     <geometry>
+       <box size=".2 .2 3" />
+     </geometry>
+     <material name="Cyan">
+       <color rgba="0 1.0 1.0 1.0"/>
+     </material>
+   </visual>
+
+ </link>
+
+ <link name="z_arm_link">
+   <inertial>
+     <origin xyz="-1.5 0 0" rpy="0 0 0"/>
+     <mass value="2.0"/>
+     <inertia ixx="0.0133333"  ixy="0"  ixz="0" iyy="1.50667" iyz="0" izz="1.50667" />
+   </inertial>
+
+   <visual>
+     <origin xyz="-1.5 0 0" rpy="0 0 0" />
+     <geometry>
+       <box size="3 .2 .2" />
+     </geometry>
+     <material name="Cyan">
+       <color rgba="0 1.0 1.0 1.0"/>
+     </material>
+   </visual>
+
+ </link>
+
+
+ <joint name="x_arm_joint" type="continuous">
+     	<parent link="sc_bus"/>
+     	<child link="x_arm_link"/>
+     	<origin xyz="1.5 0 0" rpy="0 0 0"/>
+     	<axis xyz="1 0 0"/>
+ </joint>
+
+<joint name="y_arm_joint" type="continuous">
+    	<parent link="sc_bus"/>
+    	<child link="y_arm_link"/>
+    	<origin xyz="-3 0.5 0" rpy="0 0 0"/>
+    	<axis xyz="0 1 0"/>
+</joint>
+
+<joint name="z_arm_joint" type="continuous">
+    	<parent link="sc_bus"/>
+    	<child link="z_arm_link"/>
+    	<origin xyz="-3 0 .5" rpy="0 0 0"/>
+    	<axis xyz="0 0 1"/>
+</joint>
+
+</robot>
