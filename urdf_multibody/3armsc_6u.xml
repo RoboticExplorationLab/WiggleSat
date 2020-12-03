@@ -69,7 +69,24 @@
    </visual>
 
  </link>
+ <link name="y_ball_link">
+   <inertial>
+     <origin xyz="0 0 0.5" rpy="0 0 0"/>
+     <mass value="2.0"/>
+     <inertia ixx="1.50667"  ixy="0"  ixz="0" iyy="1.50667" iyz="0" izz="0.0133333" />
+   </inertial>
 
+   <visual>
+     <origin xyz="0 0 0" rpy="0 0 0" />
+     <geometry>
+       <sphere radius = "0.1"/>
+     </geometry>
+     <material name="Black">
+       <color rgba="0.0 0.0 0.0 1.0"/>
+     </material>
+   </visual>
+
+ </link>
  <link name="z_arm_link">
    <inertial>
      <origin xyz="-1.5 0 0" rpy="0 0 0"/>
@@ -106,6 +123,12 @@
     	<parent link="sc_bus"/>
     	<child link="y_arm_link"/>
     	<origin xyz="-1.5 1 -0.5" rpy="0 0 0"/>
+    	<axis xyz="0 1 0"/>
+</joint>
+<joint name="y_ball_joint" type="continuous">
+    	<parent link="y_arm_link"/>
+    	<child link="y_ball_link"/>
+    	<origin xyz="0 0 3" rpy="0 0 0"/>
     	<axis xyz="0 1 0"/>
 </joint>
 <joint name="z_arm_joint" type="continuous">
