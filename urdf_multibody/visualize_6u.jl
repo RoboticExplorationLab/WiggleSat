@@ -31,7 +31,7 @@ end
 
 MeshCatMechanisms.animate(mvis, ts, qs2; realtimerate = 500.)
 
-cubesat_dims = [3.1;1.0;1.1]
+cubesat_dims = [3.1;1.01;1.1]
 target_cubesat_image = PngImage("/Users/kevintracy/devel/WiggleSat/urdf_multibody/white_solar_panel.png")
 target_cubesat_texture = Texture(image=target_cubesat_image)
 target_cubesat_material = MeshLambertMaterial(map=target_cubesat_texture)
@@ -44,7 +44,7 @@ target_translation = Translation(d...)
 settransform!(mvis["target_cubesat"],compose(target_translation,target_rotation))
 
 
-cubesat_dims = [3.1;1.0;1.1]
+cubesat_dims = [3.1;1.01;1.1]
 target_cubesat_image = PngImage("/Users/kevintracy/devel/WiggleSat/urdf_multibody/white_solar_panel.png")
 target_cubesat_texture = Texture(image=target_cubesat_image)
 target_cubesat_material = MeshLambertMaterial(map=target_cubesat_texture)
@@ -52,6 +52,22 @@ target_cubesat = HyperRectangle(-Vec(cubesat_dims...)./2, Vec(cubesat_dims...))
 setobject!(mvis["target_cubesat2"], target_cubesat, target_cubesat_material)
 R = Array(float(I(3)))
 target_rotation = LinearMap(RotMatrix(R...))
+# target_rotation = LinearMap(RotZ(θ))
 d = [0;-0.5;0]
 target_translation = Translation(d...)
 settransform!(mvis["target_cubesat2"],compose(target_translation,target_rotation))
+
+cubesat_dims = [0.1;1.0;2.0]
+target_cubesat_image = PngImage("/Users/kevintracy/devel/WiggleSat/urdf_multibody/front.png")
+target_cubesat_texture = Texture(image=target_cubesat_image)
+target_cubesat_material = MeshLambertMaterial(map=target_cubesat_texture)
+target_cubesat = HyperRectangle(-Vec(cubesat_dims...)./2, Vec(cubesat_dims...))
+setobject!(mvis["target_cubesat3"], target_cubesat, target_cubesat_material)
+# R = Array(float(I(3)))
+θ = pi/2
+# R = [cos(θ) sin(θ) 0 ; -sin(θ) cos(θ) 0;0 0 1]
+# target_rotation = LinearMap(RotMatrix(R...))
+target_rotation = LinearMap(RotX(θ))
+d = [1.51;0;0]
+target_translation = Translation(d...)
+settransform!(mvis["target_cubesat3"],compose(target_translation,target_rotation))
