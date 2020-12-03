@@ -89,12 +89,17 @@ optimize!(model)
 m = value.(m)
 α = value.(α)
 
+
+t_vec = (0:dt:(N-1)*dt)/(3600)
+t_vec_slim = (0:dt:(N-2)*dt)/3600
 using MATLAB
 mat"
 figure
 hold on
 title('Arm Angles')
-plot($θ')
+plot($t_vec,rad2deg($θ'))
+ylabel('Arm Angle (deg)')
+xlabel('Time (hours)')
 hold off
 "
 mat"
@@ -107,32 +112,73 @@ hold off
 mat"
 figure
 hold on
-title('Arm Angle Acceleration')
-plot($α')
+title('Arm Torque','FontSize', 18)
+plot($t_vec_slim,$J_arms*$α','linewidth',3)
+h=fill([1,1,1.57,1.57],[-0.0025,0.004,0.004,-0.0025],'b');
+    h.FaceAlpha=0.2;
+    h.EdgeAlpha = 0.0;
+    h=fill([2.58,2.58,3.1667,3.1667],[-0.0025,0.004,0.004,-0.0025],'b');
+        h.FaceAlpha=0.2;
+        h.EdgeAlpha = 0.0;
+xlabel('Time (hours)')
+xlim([0 $t_vec_slim(end)])
+legend([h(1)],'Eclipse','FontSize',15)
+ylim([min(vec($J_arms*$α)) max(vec($J_arms*$α))])
+ylabel('Arm Torque (Nm)')
+pbaspect([2 1 1])
 hold off
+saveas(gcf,'armtorque.png')
 "
 mat"
 figure
 hold on
-title('Magnetic Moment')
-plot($m')
+title('Magnetic Moment','FontSize', 18)
+plot($t_vec_slim,$m','linewidth',3)
+h=fill([1,1,1.57,1.57],[-0.0025,0.004,0.004,-0.0025],'b');
+    h.FaceAlpha=0.2;
+    h.EdgeAlpha = 0.0;
+    h=fill([2.58,2.58,3.1667,3.1667],[-0.0025,0.004,0.004,-0.0025],'b');
+        h.FaceAlpha=0.2;
+        h.EdgeAlpha = 0.0;
+xlabel('Time (hours)')
+xlim([0 $t_vec(end)])
+legend([h(1)],'Eclipse','FontSize',15)
+ylim([min(vec($m)) max(vec($m))])
+ylabel('Magnetic Moment (A/m^2)')
+pbaspect([2 1 1])
 hold off
+saveas(gcf,'magnet.png')
 "
 
 
-torque_matching_errors = zeros(N-1)
-for i = 1:N-1
-torque_matching_errors[i] = norm((skew_from_vec(B_hist_b[i])*m[:,i] + J_arms*α[:,i]) -τ_hist[i])
-end
+tau = mat_from_vec(τ_hist)
 
 mat"
 figure
 hold on
-plot($torque_matching_errors)
+title('Disturbance Torques','FontSize', 18)
+plot($t_vec,$tau','linewidth',3)
+ylabel('Disturbance Torques (Nm)')
+xlabel('Time (hours)')
+xlim([0 $t_vec(end)])
 hold off
+saveas(gcf,'torques.png')
 "
 
-θm = vec_from_mat(θ)
+println("test")
+# torque_matching_errors = zeros(N-1)
+# for i = 1:N-1
+# torque_matching_errors[i] = norm((skew_from_vec(B_hist_b[i])*m[:,i] + J_arms*α[:,i]) -τ_hist[i])
+# end
+#
+# mat"
+# figure
+# hold on
+# plot($torque_matching_errors)
+# hold off
+# "
+#
+# θm = vec_from_mat(θ)
 
 # @save "state_hist_for_vis.jld2" θm
 
