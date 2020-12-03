@@ -29,6 +29,7 @@ for ii =1:length(ts)
     qs2[ii] = [1;0;0;0;0;0;0;-1.4;2.5;0.94]
 end
 
+
 MeshCatMechanisms.animate(mvis, ts, qs2; realtimerate = 500.)
 
 cubesat_dims = [3.1;1.01;1.1]
