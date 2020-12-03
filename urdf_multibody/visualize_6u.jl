@@ -65,8 +65,6 @@ target_cubesat = HyperRectangle(-Vec(cubesat_dims...)./2, Vec(cubesat_dims...))
 setobject!(mvis["target_cubesat3"], target_cubesat, target_cubesat_material)
 # R = Array(float(I(3)))
 θ = pi/2
-# R = [cos(θ) sin(θ) 0 ; -sin(θ) cos(θ) 0;0 0 1]
-# target_rotation = LinearMap(RotMatrix(R...))
 target_rotation = LinearMap(RotX(θ))
 d = [1.51;0;0]
 target_translation = Translation(d...)
