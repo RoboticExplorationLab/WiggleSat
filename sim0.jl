@@ -239,7 +239,7 @@ function run_sim()
 
 
     # create spacecraft geometrical properties
-    faces, J = generate_geometry(.6,.1,.1)
+    faces, J = generate_geometry(.3,.2,.1)
 
     params  = (J = J,faces = faces)
     dt = 30.0
@@ -272,6 +272,8 @@ function run_sim()
     Y_mag3, f = fft_analysis(τ1,dt)
     Y_mag2, f = fft_analysis(τ2,dt)
     Y_mag1, f = fft_analysis(τ3,dt)
+    @infiltrate
+    error()
     Y_mag = Y_mag1 + Y_mag2 + Y_mag3
     # x = τ_plot[2,:]
     # y = fft(x)
@@ -326,7 +328,9 @@ for i = 1:trials
             Y_mag[ii] = 0.0
         end
     end
-    Y_mag /= norm(Y_mag,Inf)
+    #normalize over max
+    # Y_mag /= norm(Y_mag,Inf)
+
     Ys[i] = Y_mag
     fs[i] = f
 
@@ -360,7 +364,7 @@ y_max[1]= 0.0
 return Ys, newf, newYs, y_max
 end
 
-Ys, newf, newYs, y_max = monte_carlo_driver(1000)
+Ys, newf, newYs, y_max = monte_carlo_driver(10)
 
 mat"figure
 hold on
@@ -375,8 +379,8 @@ set(gca, 'XScale', 'log')
 # "
 
 
-using MAT
-
-file = matopen("test_6U.mat","w")
-write(file, "y_max",y_max)
-close(file)
+# using MAT
+#
+# file = matopen("test_6U.mat","w")
+# write(file, "y_max",y_max)
+# close(file)

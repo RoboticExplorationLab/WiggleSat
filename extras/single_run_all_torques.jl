@@ -167,7 +167,8 @@ function generate_geometry(length,width,height)
     J[1,1] *= H^2 +W^2
     J[2,2] *= H^2 +L^2
     J[3,3] *= L^2 +W^2
-    J = sample_inertia(J,20.0,20.0)
+    J = sample_inertia(J,10.0,10.0)
+    # J = sample_inertia(J,0.0,0.0)
 
     # faces normal vectors
     faces_n = Array([I(3) -I(3)])
@@ -176,7 +177,7 @@ function generate_geometry(length,width,height)
     faces_areas = [W*H; H*L; L*W; W*H; H*L; L*W]
 
     # CG offset
-    scale_factor = 2
+    scale_factor = 6
     cg_offset = [rand_in_range(-L/scale_factor,L/scale_factor);
                  rand_in_range(-W/scale_factor,W/scale_factor);
                  rand_in_range(-H/scale_factor,H/scale_factor)]
@@ -231,10 +232,10 @@ function run_sim()
 
 
     # create spacecraft geometrical properties
-    faces, J = generate_geometry(.3,.1,.1)
+    faces, J = generate_geometry(.3,.2,.1)
 
     params  = (J = J,faces = faces)
-    dt = 10.0
+    dt = 1.0
 
     t, epc, r_eci, v_eci = run_SD_prop(dt)
 
@@ -331,7 +332,7 @@ end
 
 using JLD2
 
-@save "orbit_data.jld2" τ_hist B_hist_b J
+@save "orbit_data_zac.jld2" τ_hist B_hist_b J
 
 #
 # using JuMP

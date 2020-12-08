@@ -41,9 +41,10 @@ legend('Maximum Normalized Magnitude','Reaction Wheel Control/Jitter')
 xlabel('Frequency (hz)')
 ylabel('Maximum Normalized Magnitude')
 set(gca, 'XScale', 'log')
+set(gca, 'YScale', 'log')
 hold off 
 % saveas(gcf,'testplot.png')
-matlab2tikz('mc_frequencies_2.tex')
+% matlab2tikz('mc_frequencies_2.tex')
 
 
 %% legend test 
