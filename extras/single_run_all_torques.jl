@@ -14,14 +14,15 @@ function run_SD_prop(dt)
     epc0 = Epoch(2020, 5, 1, 1, 0, 0, 0.0)
 
     # Declare initial state in terms of osculating orbital elements
-    oe0  = [R_EARTH + 550*1e3, 0.0000,
-            45.6, 0, 0, 110]
-
+    # oe0  = [R_EARTH + 420*1e3, 0.0000,
+    #         45.6, 0, 0, 110]
+    # ISS orbit
+    oe0 = [6795588.38, .0010852, 51.43838, 209.71973, 75.35892, 49.65941]
     # Convert osculating elements to Cartesean state
     eci0 = sOSCtoCART(oe0, use_degrees=true)
 
     # Set the propagation end time to one orbit period after the start
-    T    = 2.6*orbit_period(oe0[1])
+    T    = 10*orbit_period(oe0[1])
     epcf = epc0 + T
 
     # Create an EarthInertialState orbit propagagator
@@ -160,7 +161,8 @@ function generate_geometry(length,width,height)
     W = width
     H = height
     volume = L*W*H
-    mass = volume*(1/0.01)
+    # mass = volume*(1/0.01)
+    mass = 10
 
     # inertia
     J = (mass/12)*Array(I(3))
@@ -178,9 +180,10 @@ function generate_geometry(length,width,height)
 
     # CG offset
     scale_factor = 6
-    cg_offset = [rand_in_range(-L/scale_factor,L/scale_factor);
-                 rand_in_range(-W/scale_factor,W/scale_factor);
-                 rand_in_range(-H/scale_factor,H/scale_factor)]
+    # cg_offset = [rand_in_range(-L/scale_factor,L/scale_factor);
+    #              rand_in_range(-W/scale_factor,W/scale_factor);
+    #              rand_in_range(-H/scale_factor,H/scale_factor)]
+    cg_offset = .02*normalize(randn(3))
     # face position vectors
     r = fill(zeros(3),6)
     r[1] = L/2 * faces_n[:,1] - cg_offset
@@ -267,34 +270,7 @@ function run_sim()
     τ_srp = mat_from_vec(τ_hist_srp)
     τ_gg = mat_from_vec(τ_hist_gg)
     τ_aero = mat_from_vec(τ_hist_aero)
-    # F_plot = mat_from_vec(F_srp)
 
-    # τ1 = create_spline(t,τ_plot[1,:])
-    # τ2 = create_spline(t,τ_plot[2,:])
-    # τ3 = create_spline(t,τ_plot[3,:])
-    # dt = 1.0
-    # Y_mag3, f = fft_analysis(τ1,dt)
-    # Y_mag2, f = fft_analysis(τ2,dt)
-    # Y_mag1, f = fft_analysis(τ3,dt)
-    # Y_mag = Y_mag1 + Y_mag2 + Y_mag3
-    # x = τ_plot[2,:]
-    # y = fft(x)
-    # f = (0:length(y)-1)*(1/dt)/length(y)
-    # Y_mag = abs.(y)
-    # Y_phase = imag(y)
-
-    # mat"
-    # figure
-    # hold on
-    # plot($f(2:end),$Y_mag(2:end))
-    # %xlim([0 1e-3])
-    # %xlim([0 $(1/dt)/2])
-    # xlim([0 5e-3])
-    # ylabel('Magnitude')
-    # xlabel('Frequency (Hz)')
-    # hold off
-    # "
-    #
     mat"
     figure
     hold on
