@@ -5,23 +5,23 @@ using SatelliteDynamics
 using Infiltrator
 using FFTW
 using MATLAB
+using Dierckx
 
-include("/Users/kevintracy/devel/WiggleSat/mag_field.jl")
 function run_SD_prop(dt)
 
 
     # Declare simulation initial Epoch
-    epc0 = Epoch(2020, 5, 1, 1, 0, 0, 0.0)
+    epc0 = Epoch(rand(2014:2017), rand(1:12), rand(1:27), rand(1:11), 0, 0, 0.0)
 
     # Declare initial state in terms of osculating orbital elements
-    oe0  = [R_EARTH + 550*1e3, 0.0000,
-            45.6, 0, 0, 110]
+    oe0  = [R_EARTH + 550*1e3, rand_in_range(0,0.00002),
+            rand_in_range(0.0,89.9), 0, 0, 0]
 
     # Convert osculating elements to Cartesean state
     eci0 = sOSCtoCART(oe0, use_degrees=true)
 
     # Set the propagation end time to one orbit period after the start
-    T    = 2.6*orbit_period(oe0[1])
+    T    = 10.0*orbit_period(oe0[1])
     epcf = epc0 + T
 
     # Create an EarthInertialState orbit propagagator
@@ -141,8 +141,14 @@ function sample_inertia(J,deg_std,percent_std)
     E = eigen(J)
     S = @views E.vectors
     D = @views E.values
-
+    # scale moments
+    # @infiltrate
+    # error()
     J_new = S * Diagonal(((1 .+(percent_std/100)*randn(3)) .* D)) * S'
+
+    # J_new = E.vectors*
+    #         Diagonal(((1 .+(percent_std/100)*randn(3)) .* E.values))
+    #         *E.vectors'
 
     # rotate
     R = dcm_from_phi(deg2rad(deg_std)*randn(3))
@@ -160,15 +166,16 @@ function generate_geometry(length,width,height)
     W = width
     H = height
     volume = L*W*H
-    mass = volume*(1/0.01)
+    # mass = volume*(1/0.01)
+    # NOTE: this is the 6U mass
+    mass = 10.0
 
     # inertia
     J = (mass/12)*Array(I(3))
     J[1,1] *= H^2 +W^2
     J[2,2] *= H^2 +L^2
     J[3,3] *= L^2 +W^2
-    J = sample_inertia(J,10.0,10.0)
-    # J = sample_inertia(J,0.0,0.0)
+    J = sample_inertia(J,20.0,20.0)
 
     # faces normal vectors
     faces_n = Array([I(3) -I(3)])
@@ -177,10 +184,13 @@ function generate_geometry(length,width,height)
     faces_areas = [W*H; H*L; L*W; W*H; H*L; L*W]
 
     # CG offset
-    scale_factor = 6
-    cg_offset = [rand_in_range(-L/scale_factor,L/scale_factor);
-                 rand_in_range(-W/scale_factor,W/scale_factor);
-                 rand_in_range(-H/scale_factor,H/scale_factor)]
+    # scale_factor = 2
+    # cg_offset = [rand_in_range(-L/scale_factor,L/scale_factor);
+    #              rand_in_range(-W/scale_factor,W/scale_factor);
+    #              rand_in_range(-H/scale_factor,H/scale_factor)]
+
+    # 2cm offset for everything
+    cg_offset = .02*normalize(randn(3))
     # face position vectors
     r = fill(zeros(3),6)
     r[1] = L/2 * faces_n[:,1] - cg_offset
@@ -197,7 +207,7 @@ function generate_geometry(length,width,height)
 
     faces = (normal_vecs = faces_n, areas = faces_areas, r = r,
              R_spec = R_spec, R_diff = R_diff, R_abs  = R_abs,
-             Cd = 1.5)
+             Cd = 2.3)
 
     return faces, J
 end
@@ -213,7 +223,25 @@ function create_spline(t,x)
     return newy
 end
 
+function new_fft_analysis(τ1,dt)
+    if isodd(length(τ1))
+        pop!(τ1)
+    end
+    Fs = 1/dt
+    N = length(τ1)
+    xdft = fft(τ1);
+    xdft = xdft[1:Int(N/2)+1];
 
+    # here is PSD
+    # psdx = (1/(Fs*N)) * abs.(xdft).^2;
+
+    # here is RMS
+    psdx = sqrt((1/(Fs*N))) * abs.(xdft);
+
+    psdx[2:end-1] = 2*psdx[2:end-1];
+    freq = 0:(Fs/length(τ1)):Fs/2;
+    return psdx,freq
+end
 function fft_analysis(x,dt)
 
     # FFTW dft
@@ -225,6 +253,15 @@ function fft_analysis(x,dt)
     # get magnitude at each frequency
     Y_mag = abs.(y)
 
+    # mat"
+    # figure
+    # hold on
+    # plot($Y_mag)
+    # hold off
+    # "
+    # @infiltrate
+    # error()
+
     return Y_mag, f
 end
 
@@ -235,151 +272,121 @@ function run_sim()
     faces, J = generate_geometry(.3,.2,.1)
 
     params  = (J = J,faces = faces)
-    dt = 1.0
+    dt = 30.0
 
     t, epc, r_eci, v_eci = run_SD_prop(dt)
 
-    # ᴺqᴮ = randq()
-    ᴺqᴮ = [0;0;0;1]
+    ᴺqᴮ = randq()
+    # ᴺqᴮ = [0;0;0;1]
 
     N = length(r_eci)
 
-    τ_hist_srp = fill(zeros(3),N)
-    τ_hist_gg = fill(zeros(3),N)
-    τ_hist_aero = fill(zeros(3),N)
     τ_hist = fill(zeros(3),N)
-    B_hist_b = fill(zeros(3),N)
-    B_hist_eci = fill(zeros(3),N)
     F_srp = fill(  fill(zeros(3),6)   ,N)
     active_faces = zeros(N)
 
     for k = 1:N
-        τ_hist_gg[k] = gg_torque(r_eci[k],ᴺqᴮ,params)
-        τ_hist_srp[k] = srp_torque(r_eci[k],epc[k],ᴺqᴮ,params)
-        τ_hist_aero[k] = aerodynamic_torque(r_eci[k],v_eci[k],epc[k],ᴺqᴮ,params)
-        τ_hist[k] = τ_hist_gg[k] + τ_hist_srp[k] + τ_hist_aero[k]
-        B_hist_eci[k] = IGRF13(r_eci[k],epc[k])
-        B_hist_b[k] = dcm_from_q(ᴺqᴮ)'*B_hist_eci[k]
+        τ_hist[k] += gg_torque(r_eci[k],ᴺqᴮ,params)
+        τ_hist[k] += srp_torque(r_eci[k],epc[k],ᴺqᴮ,params)
+        τ_hist[k] += aerodynamic_torque(r_eci[k],v_eci[k],epc[k],ᴺqᴮ,params)
     end
 
 
-    τ_plot = mat_from_vec(τ_hist)
-    τ_srp = mat_from_vec(τ_hist_srp)
-    τ_gg = mat_from_vec(τ_hist_gg)
-    τ_aero = mat_from_vec(τ_hist_aero)
+    # NOTE: I scale to μNm here here
+    τ_plot = mat_from_vec(τ_hist)*1e6
     # F_plot = mat_from_vec(F_srp)
 
-    # τ1 = create_spline(t,τ_plot[1,:])
-    # τ2 = create_spline(t,τ_plot[2,:])
-    # τ3 = create_spline(t,τ_plot[3,:])
-    # dt = 1.0
-    # Y_mag3, f = fft_analysis(τ1,dt)
-    # Y_mag2, f = fft_analysis(τ2,dt)
-    # Y_mag1, f = fft_analysis(τ3,dt)
-    # Y_mag = Y_mag1 + Y_mag2 + Y_mag3
-    # x = τ_plot[2,:]
-    # y = fft(x)
-    # f = (0:length(y)-1)*(1/dt)/length(y)
-    # Y_mag = abs.(y)
-    # Y_phase = imag(y)
+    τ1 = create_spline(t,τ_plot[1,:])
+    τ2 = create_spline(t,τ_plot[2,:])
+    τ3 = create_spline(t,τ_plot[3,:])
+    dt = 1.0
+    Y_mag1, f = new_fft_analysis(τ1,dt)
+    Y_mag2, f = new_fft_analysis(τ2,dt)
+    Y_mag3, f = new_fft_analysis(τ3,dt)
 
-    # mat"
-    # figure
-    # hold on
-    # plot($f(2:end),$Y_mag(2:end))
-    # %xlim([0 1e-3])
-    # %xlim([0 $(1/dt)/2])
-    # xlim([0 5e-3])
-    # ylabel('Magnitude')
-    # xlabel('Frequency (Hz)')
-    # hold off
-    # "
-    #
-    mat"
-    figure
-    hold on
-    plot($τ_plot')
-    hold off"
-    mat"
-    figure
-    title('SRP')
-    hold on
-    plot($τ_srp')
-    hold off"
-    mat"
-    figure
-    title('Aero')
-    hold on
-    plot($τ_aero')
-    hold off"
-    mat"
-    figure
-    title('GG')
-    hold on
-    plot($τ_gg')
-    hold off"
-    # mat"
-    # figure
-    # hold on
-    # plot($f,$Y_phase)
-    # hold off
-    # "
-    return τ_hist, B_hist_b, B_hist_eci, τ_aero, τ_gg, τ_srp, params.J
+
+    Y_mag = [norm([Y_mag1[i];Y_mag2[i];Y_mag3[i]]) for i = 1:length(Y_mag1)]
+
+    return f, Y_mag, dt
 
 end
 
-τ_hist, B_hist_b, B_hist_eci, τ_aero, τ_gg, τ_srp, J = run_sim()
+function monte_carlo_driver(trials)
 
-using JLD2
-@save "orbit_data_zac.jld2" τ_hist B_hist_b J
+    # Y_vec = fill([],trials)
+    # Y_mag =
+Ys = fill([],trials)
+fs = fill([],trials)
+# mat"
+# figure
+# hold on"
+@showprogress "running Monte Carlo" for i = 1:trials
+    f, Y_mag, dt  = run_sim()
+    # @infiltrate
+    # error()
+    for ii = 1:length(f)
+        # if f[ii]>5e-3
+        if f[ii]>0.5
+            Y_mag[ii] = 0.0
+        end
+    end
+    #normalize over max
+    # Y_mag /= norm(Y_mag,Inf)
 
-#
-# using JuMP
-# using OSQP
-# N = length(τ_hist)
-#
-# model = Model(OSQP.Optimizer)
-#
-# @variable(model, τ[1:3,1:N])
-# @variable(model, m[1:3,1:N])
-#
-# for i = 1:N
-#     @constraint(model, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] .== τ_hist[i])
-# end
-#
-# optimize!(model)
-# B_hist_b *= 1e7
-# τ_hist *= 1e7
-#
-# using Convex, COSMO, Mosek, MosekTools
-#
-# τ = Variable(3,N)
-# m = Variable(3,N)
-#
-# # cons = Constraint
-#
-# constraints = Constraint[skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i] for i in 1:N]
-#
-# problem = minimize(sumsquares(τ) + sumsquares(m), constraints)
-#
-# # solve!(problem, () -> COSMO.Optimizer(max_iter = 20000))
-# solve!(problem, () -> Mosek.Optimizer)
-# # cons = Constraint[ ]
-# # for i = 1:N
-# #     push!(cons, skew_from_vec(B_hist_b[i])*m[:,i] + τ[:,i] == τ_hist[i]  )
-# # end
-#
-# τ = Convex.evaluate(τ)
-# m = Convex.evaluate(m)
-#
+    Ys[i] = Y_mag
+    fs[i] = f
+
+    # mat"plot($f(2:end),$Y_mag(2:end))"
+end
+# f, Y_mag, dt = run_sim()
+# mat"
+# xlim([0 1e2])
+# ylabel('Normalized Magnitude')
+# xlabel('Frequency (Hz)')
+# set(gca, 'XScale', 'log')
+# %set(gca, 'YScale', 'log')
+# hold off
+# "
+newf = 0:1e-6:.5
+newYs = zeros(length(newf),length(Ys))
+for i = 1:length(Ys)
+    f = fs[i]
+    Y = Ys[i]
+    spl = Spline1D(f,Y;k=1)
+    newY = spl(newf)
+
+    newYs[:,i] = newY
+end
+
+# y_avg = zeros(length(newf))
+# for i = 1:length(newf)
+# y_avg = mean(newYs, dims = 2)
+y_max = maximum(newYs, dims = 2)
+y_max[1]= 0.0
+return Ys, newf, newYs, y_max
+end
+
+Ys, newf, newYs, y_max = monte_carlo_driver(200)
+
+mat"figure
+hold on
+plot($newf,$y_max)
+xlabel('Frequency (hz)')
+ylabel('Disturbance Torque (Nm)')
+set(gca, 'XScale', 'log')
+set(gca, 'YScale', 'log')
+%saveas(gcf,'newplot.png')
+"
 # mat"
 # figure
 # hold on
-# plot($τ')
-# hold off"
+# plot($newYs)
+# hold off
+# "
+
 #
-# mat"
-# figure
-# hold on
-# plot($m')
-# hold off"
+using MAT
+
+file = matopen("test_6U_correct_units_20.mat","w")
+write(file, "y_max",y_max)
+close(file)
