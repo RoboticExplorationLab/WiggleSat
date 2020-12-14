@@ -1,6 +1,6 @@
 using LinearAlgebra
 
-
+using CoordinateTransformations
 using RigidBodyDynamics
 using MeshCat, MeshCatMechanisms
 using GeometryTypes:
@@ -17,16 +17,21 @@ state = MechanismState(rob)
 
 mvis = MechanismVisualizer(rob, URDFVisuals(urdf))
 # setprop!(mvis["/Background"], "top_color", colorant="red")
-delete!(mvis["/Background"])
+# delete!(mvis["/Background"])
+setprop!(mvis["/Lights/AmbientLight"],"intensity",10.0)
 open(mvis)
 
 
 final_time = 50.0
 
+r = [0;0;1]
+θ = deg2rad(180)
+# ϕ = r*θ
+quat = [cos(θ/2);r*sin(θ/2)]
 ts = [(i-1)*10.0 for i = 1:100]
 qs2 = fill(zeros(10),length(ts))
 for ii =1:length(ts)
-    qs2[ii] = [1;0;0;0;0;0;0;-1.4;2.5;0.94]
+    qs2[ii] = [quat;0;0;0;-1.4;2.5;0.94]
 end
 
 
@@ -67,6 +72,6 @@ setobject!(mvis["target_cubesat3"], target_cubesat, target_cubesat_material)
 # R = Array(float(I(3)))
 θ = pi/2
 target_rotation = LinearMap(RotX(θ))
-d = [1.51;0;0]
+d = [-1.51;0;0]
 target_translation = Translation(d...)
 settransform!(mvis["target_cubesat3"],compose(target_translation,target_rotation))
