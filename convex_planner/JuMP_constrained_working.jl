@@ -15,15 +15,6 @@ model = Model(Mosek.Optimizer)
 set_optimizer_attribute(model, "MSK_DPAR_INTPNT_CO_TOL_DFEAS",1e-15)
 set_optimizer_attribute(model, "MSK_DPAR_INTPNT_CO_TOL_REL_GAP",1e-15)
 
-# model = Model(COSMO.Optimizer)
-# set_optimizer_attribute(model, "max_iter",20000)
-# model = Model(OSQP.Optimizer)
-# set_optimizer_attribute(model, "eps_abs", tol)
-# set_optimizer_attribute(model, "eps_rel", tol)
-# set_optimizer_attribute(model, "eps_prim_inf", tol)
-# set_optimizer_attribute(model, "eps_dual_inf", tol)
-# set_optimizer_attribute(model, "max_iter", 20000)
-# set_optimizer_attribute(model, "polish", 1)
 
 # create variables
 @variable(model, α[1:3,1:N-1])
@@ -109,10 +100,52 @@ title('Arm Angle Derivative')
 plot($θ̇')
 hold off
 "
+# mat"
+# figure
+# hold on
+# title('Arm Torque','FontSize', 18)
+# plot($t_vec_slim,$J_arms*$α','linewidth',3)
+# h=fill([1,1,1.57,1.57],[-0.0025,0.004,0.004,-0.0025],'b');
+#     h.FaceAlpha=0.2;
+#     h.EdgeAlpha = 0.0;
+#     h=fill([2.58,2.58,3.1667,3.1667],[-0.0025,0.004,0.004,-0.0025],'b');
+#         h.FaceAlpha=0.2;
+#         h.EdgeAlpha = 0.0;
+# xlabel('Time (hours)')
+# xlim([0 $t_vec_slim(end)])
+# legend([h(1)],'Eclipse','FontSize',15)
+# ylim([min(vec($J_arms*$α)) max(vec($J_arms*$α))])
+# ylabel('Arm Torque (Nm)')
+# pbaspect([2 1 1])
+# hold off
+# saveas(gcf,'armtorque.eps','epsc')
+# "
+# mat"
+# figure
+# hold on
+# title('Magnetic Moment','FontSize', 18)
+# plot($t_vec_slim,$m','linewidth',3)
+# h=fill([1,1,1.57,1.57],[-0.0025,0.004,0.004,-0.0025],'b');
+#     h.FaceAlpha=0.2;
+#     h.EdgeAlpha = 0.0;
+#     h=fill([2.58,2.58,3.1667,3.1667],[-0.0025,0.004,0.004,-0.0025],'b');
+#         h.FaceAlpha=0.2;
+#         h.EdgeAlpha = 0.0;
+# xlabel('Time (hours)')
+# xlim([0 $t_vec(end)])
+# legend([h(1)],'Eclipse','FontSize',15)
+# ylim([min(vec($m)) max(vec($m))])
+# ylabel('Magnetic Moment (A/m^2)')
+# pbaspect([2 1 1])
+# hold off
+# saveas(gcf,'magnet.eps','epsc')
+# "
 mat"
 figure
 hold on
-title('Arm Torque','FontSize', 18)
+subplot(2,1,1)
+hold on
+title('Arm Torque','FontSize', 15)
 plot($t_vec_slim,$J_arms*$α','linewidth',3)
 h=fill([1,1,1.57,1.57],[-0.0025,0.004,0.004,-0.0025],'b');
     h.FaceAlpha=0.2;
@@ -125,14 +158,13 @@ xlim([0 $t_vec_slim(end)])
 legend([h(1)],'Eclipse','FontSize',15)
 ylim([min(vec($J_arms*$α)) max(vec($J_arms*$α))])
 ylabel('Arm Torque (Nm)')
-pbaspect([2 1 1])
+%pbaspect([2 1 1])
 hold off
-saveas(gcf,'armtorque.png')
-"
-mat"
-figure
+%saveas(gcf,'armtorque.eps','epsc')
+
+subplot(2,1,2)
 hold on
-title('Magnetic Moment','FontSize', 18)
+title('Magnetic Moment','FontSize', 15)
 plot($t_vec_slim,$m','linewidth',3)
 h=fill([1,1,1.57,1.57],[-0.0025,0.004,0.004,-0.0025],'b');
     h.FaceAlpha=0.2;
@@ -145,11 +177,10 @@ xlim([0 $t_vec(end)])
 legend([h(1)],'Eclipse','FontSize',15)
 ylim([min(vec($m)) max(vec($m))])
 ylabel('Magnetic Moment (A/m^2)')
-pbaspect([2 1 1])
+%pbaspect([2 1 1])
 hold off
-saveas(gcf,'magnet.png')
+saveas(gcf,'convex_slew_data.eps','epsc')
 "
-
 
 tau = mat_from_vec(τ_hist)
 
