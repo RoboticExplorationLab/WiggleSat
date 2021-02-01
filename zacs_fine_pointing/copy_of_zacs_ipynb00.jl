@@ -88,7 +88,7 @@ Nm2μNm = 1e6
 #Kalman Filter Design
 # V = [0.00001*I zeros(6,3); zeros(3,6) 0.0001*I] # TODO: tune this
 # V = [β[1]*I zeros(6,3); zeros(3,6) β[2]*I] # TODO: tune this
-V = Diagonal( SA[β[1],β[1],β[1],β[1],β[1],β[1],β[2],β[2],β[2]])
+V = Diagonal( SA[β[1],β[1],β[1],β[6],β[6],β[6],β[2],β[2],β[2]])
 
 # W_telescope = 1.0^2 #arcsec^2 1-sigma at 1 Hz # NOTE: THIS IS NOW AN INPUT
 #W_gyro = (0.06*60)^2 #(arcsec/sec)^2 1-sigma at 1 Hz for Epson MEMS IMU (ARW = 0.06 deg/sqrt(hr))
@@ -234,9 +234,11 @@ fd_closure(βc) = driver(τ_hist,B_hist_b,J,W_telescope,βc)
 bestβ = β_0
 bestJ = fd_closure(bestβ)
 @showprogress "optimizing..." for i = 1:N
-    β = (abs.(1 .+ α*randn(5))) .* bestβ
+    β = (abs.(1 .+ α*randn(6))) .* bestβ
+    # β = copy(bestβ)
+    # β[rand(1:6)] *= (abs(1 + α*randn()))
     newJ =  fd_closure(β)
-    @show bestJ
+    println(bestJ)
     if newJ < bestJ
         bestJ = (newJ)
         bestβ = copy(β)
@@ -247,10 +249,38 @@ return bestβ, bestJ
 end
 
 # # 1 arcsecond case
-# W_telescope = 1.0^2 #arcsec^2 1-sigma at 1 Hz
-# β_0 = [8.846444933633799e-9, 5.480871158618419e-5,
-# 1.604744628342277, 0.04316860105099424, 0.00027228483262571704]
-# bestβ_1,bestJ_1 = optimize_pointing(τ_hist,B_hist_b,J,β_0,W_telescope,100,0.1)
+# W_telescope = 1^2 #arcsec^2 1-sigma at 1 Hz
+# β_0 = [7.858862760110066e-7, 6.744841534181973e-5, 91.72214577240014,
+# 0.19447062964953343, 0.007291584771687058, 7.287578908992002e-7]
+# # β_0 = [0.00001,0.0001,1,10,0.01,0.00001]
+# bestβ_1,bestJ_1 = optimize_pointing(τ_hist,B_hist_b,J,β_0,W_telescope,100,1)
+#
+# # .1 arcsecond case
+# W_telescope = 0.1^2 #arcsec^2 1-sigma at 1 Hz
+# β_0 = [4.332303216588739e-7, 6.990003715236112e-5, 42.12592959061058,
+#  0.1404486745411262, 0.0002723656503952372, 1.6512704231365986e-7]
+# # β_0 = [0.00001,0.0001,1,10,0.01,0.00001]
+# bestβ_1,bestJ_1 = optimize_pointing(τ_hist,B_hist_b,J,β_0,W_telescope,100,1)
+
+# # .5 arcsecond case
+# W_telescope = 0.5^2 #arcsec^2 1-sigma at 1 Hz
+# β_0 = [7.586731861311927e-9, 0.0005854287799096624, 1.0881005224942581,
+#  0.018258319791698032, 0.0007999924517238642, 1.4672777505792572e-9]
+# # β_0 = [0.00001,0.0001,1,10,0.01,0.00001]
+# bestβ_1,bestJ_1 = optimize_pointing(τ_hist,B_hist_b,J,β_0,W_telescope,100,1)
+
+# .1 arcsecond case
+W_telescope = 0.05^2 #arcsec^2 1-sigma at 1 Hz
+β_0 = [4.332303216588739e-7, 6.990003715236112e-5, 42.12592959061058,
+ 0.1404486745411262, 0.0002723656503952372, 1.6512704231365986e-7]
+# β_0 = [0.00001,0.0001,1,10,0.01,0.00001]
+bestβ_1,bestJ_1 = optimize_pointing(τ_hist,B_hist_b,J,β_0,W_telescope,100,1)
+
+
+
+
+
+
 
 # # 10 arcsecond case
 # W_telescope = 10.0^2 #arcsec^2 1-sigma at 1 Hz
@@ -258,8 +288,12 @@ end
 # 0.03512714908159575, 0.13183770364640643, 0.00021472969710868088]
 # bestβ_2,bestJ_2 = optimize_pointing(τ_hist,B_hist_b,J,β_0,W_telescope,100,1)
 
-# 10 arcsecond case
-W_telescope = 0.1^2 #arcsec^2 1-sigma at 1 Hz
-β_0 = [4.859209940424407e-10, 0.00017843343145081865, 2.004553423591832,
- 2.3027986802413978e-5, 5.574007444038023e-5]
-bestβ_3,bestJ_3 = optimize_pointing(τ_hist,B_hist_b,J,β_0,W_telescope,100,.001)
+# # 10 arcsecond case
+# W_telescope = 0.1^2 #arcsec^2 1-sigma at 1 Hz
+# β_0 = [4.859209940424407e-10, 0.00017843343145081865, 2.004553423591832,
+#  2.3027986802413978e-5, 5.574007444038023e-5]
+# bestβ_3,bestJ_3 = optimize_pointing(τ_hist,B_hist_b,J,β_0,W_telescope,100,.001)
+
+
+arc_sec_vec = [0.1,  0.5,  1]
+rms_vec     = [0.33, 0.39, .49 ]

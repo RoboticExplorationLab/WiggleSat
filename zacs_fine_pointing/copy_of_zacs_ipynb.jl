@@ -4,7 +4,7 @@ using JLD2
 using MATLAB
 @load "/Users/kevintracy/devel/WiggleSat/orbit_data_zac.jld2" τ_hist B_hist_b J
 
-function run_zac(τ_hist,B_hist_b,J)
+function run_zac(τ_hist,B_hist_b,J,W_telescope,Σ_trim)
 dt = 1.0 #seconds
 #t = Array(LinRange(0.0, dt*length(τ_hist), length(τ_hist)+1))
 t = Array(1:600)
@@ -33,10 +33,10 @@ G = H[1:6,10:12];
 V = [0.00001*I zeros(6,3); zeros(3,6) 0.0001*I] # TODO: tune this
 
 
-W_telescope = 1.0^2 #arcsec^2 1-sigma at 1 Hz
+# W_telescope = 0.001^2 #arcsec^2 1-sigma at 1 Hz
 #W_gyro = (0.06*60)^2 #(arcsec/sec)^2 1-sigma at 1 Hz for Epson MEMS IMU (ARW = 0.06 deg/sqrt(hr))
 W_gyro = (0.0035*60)^2 #(arcsec/sec)^2 1-sigma at 1 Hz for Honeywell GG1320 laser gyro (ARW = 0.0035 deg/sqrt(hr))
-W = Array(Diagonal([(W_telescope/3.0)*ones(3); (W_gyro/3.0)*ones(3)])) # NOTE: this feels like cheeting (/3)
+W = Array(Diagonal([(W_telescope/3.0)*ones(3); (W_gyro/3.0)*ones(3)])) #
 
 #Double integrator dynamics + bias torque
 #Units are arcsec, seconds, torque in μNm
@@ -66,8 +66,8 @@ end
 x = zeros(6,length(t))
 u = zeros(3,length(t)-1)
 # initial condition
-x[:,1] .= [1.0*randn(3); 0.1*randn(3)]
-# x[:,1] .= [0*randn(3); 0*randn(3)]
+# x[:,1] .= [1.0*randn(3); 0.1*randn(3)]
+x[:,1] .= [0*randn(3); 0*randn(3)]
 
 x̄ = zeros(9,length(t)) #Filter state includes torque bias
 x̄[:,1] = [zeros(6);τ[:,1]]
@@ -97,7 +97,7 @@ for k = 1:(length(t)-1)
     x̄[:,k+1] .= xp + L*z #Measurement update
     P[:,:,k+1] .= Pp - L*S*L' #Covariance update
     for m = 1:9
-        P[m,m,k+1] = max(1e-6,P[m,m,k+1])
+        P[m,m,k+1] = max(Σ_trim,P[m,m,k+1])
     end
 end
 
@@ -108,42 +108,62 @@ for k = 1:Nt
     Xvar += (1/Nt)*(x[1:3,k]'*x[1:3,k])
 end
 RMSerr = sqrt(Xvar)
+return RMSerr
+# @show RMSerr
+# n = 2
+# # plot(x[n,:])
+# # plot!(x̄[n,:])
+#
+# n = 7
+# # plot(x̄[n,t])
+# # plot!(τ[n-6,t])
+#
+# # plot(x[1,:],x[2,:])
+# xcirc = zeros(361)
+# ycirc = zeros(361)
+# for k = 0:360
+#     xcirc[k+1] = cosd(k)
+#     ycirc[k+1] = sind(k)
+# end
+# # plot!(xcirc,ycirc,linewidth=2)
+# # xlims!(-2,2)
+# # ylims!(-2,2)
+#
+#
+# mat"""
+# plot($x(1,:),$x(2,:),'linewidth',2)
+# hold on
+# plot($xcirc,$ycirc,'linewidth',2)
+# %xlim([-1.5 1.5])
+# %ylim([-1.5 1.5])
+# %axis equal
+# xlabel('Yaw (arcsec)')
+# ylabel('Pitch (arcsec)')
+# %addpath('~/Documents/MATLAB/matlab2tikz/src')
+# %matlab2tikz('closed-loop-pointing.tikz')
+# """
+#
+# 0.06*60
 
-n = 2
-# plot(x[n,:])
-# plot!(x̄[n,:])
-
-n = 7
-# plot(x̄[n,t])
-# plot!(τ[n-6,t])
-
-# plot(x[1,:],x[2,:])
-xcirc = zeros(361)
-ycirc = zeros(361)
-for k = 0:360
-    xcirc[k+1] = cosd(k)
-    ycirc[k+1] = sind(k)
 end
-# plot!(xcirc,ycirc,linewidth=2)
-# xlims!(-2,2)
-# ylims!(-2,2)
 
 
-mat"""
-plot($x(1,:),$x(2,:),'linewidth',2)
+W_telescope_range = zeros(63)
+W_telescope_range[1] = 0.001^2 #arcsec^2 1-sigma at 1 Hz
+for i = 2:length(W_telescope_range)
+    W_telescope_range[i] = 1.3*W_telescope_range[i-1]
+end
+Σ_trim = 1e-2
+rms_vec = zeros(length(W_telescope_range))
+for i = 1:length(rms_vec)
+    rms_vec[i] = run_zac(τ_hist,B_hist_b,J,W_telescope_range[i],Σ_trim)
+end
+
+mat"
+figure
 hold on
-plot($xcirc,$ycirc,'linewidth',2)
-xlim([-1.5 1.5])
-ylim([-1.5 1.5])
-axis equal
-xlabel('Yaw (arcsec)')
-ylabel('Pitch (arcsec)')
-%addpath('~/Documents/MATLAB/matlab2tikz/src')
-%matlab2tikz('closed-loop-pointing.tikz')
-"""
-
-0.06*60
-
-end
-
-run_zac(τ_hist,B_hist_b,J)
+plot($W_telescope_range,$rms_vec)
+set(gca, 'YScale', 'log')
+set(gca, 'XScale', 'log')
+hold off
+"
