@@ -95,10 +95,13 @@ for k = 1:(length(t)-1)
 
     # KF update
     x̄[:,k+1] .= xp + L*z #Measurement update
-    P[:,:,k+1] .= Pp - L*S*L' #Covariance update
-    for m = 1:9
-        P[m,m,k+1] = max(Σ_trim,P[m,m,k+1])
-    end
+    # P[:,:,k+1] .= Pp - L*S*L' #Covariance update
+    # @infiltrate
+    # error()
+    P[:,:,k+1] .= (I - L*Cf)*Pp*(I - L*Cf)' + L*W*L'
+    # for m = 1:9
+    #     P[m,m,k+1] = max(Σ_trim,P[m,m,k+1])
+    # end
 end
 
 
@@ -148,22 +151,77 @@ return RMSerr
 end
 
 
-W_telescope_range = zeros(63)
-W_telescope_range[1] = 0.001^2 #arcsec^2 1-sigma at 1 Hz
+# main_runs = 5
+# rms_mat = zeros(10,63)
+# for ii = 1:main_runs
+#     W_telescope_range = zeros(63)
+#     W_telescope_range[1] = 0.001^2 #arcsec^2 1-sigma at 1 Hz
+#     for i = 2:length(W_telescope_range)
+#         W_telescope_range[i] = 1.3*W_telescope_range[i-1]
+#     end
+#     Σ_trim = 1e-2
+#     rms_vec = zeros(length(W_telescope_range))
+#     for i = 1:length(rms_vec)
+#         rms_vec[i] = run_zac(τ_hist,B_hist_b,J,W_telescope_range[i],Σ_trim)
+#     end
+#     rms_mat[ii,:] = rms_vec
+# end
+function run_mc()
+main_runs = 1000
+rms_mat = zeros(main_runs,46)
+W_telescope_range = zeros(46)
+W_telescope_range[1] = 0.0001 #arcsec^2 1-sigma at 1 Hz
 for i = 2:length(W_telescope_range)
     W_telescope_range[i] = 1.3*W_telescope_range[i-1]
 end
-Σ_trim = 1e-2
-rms_vec = zeros(length(W_telescope_range))
-for i = 1:length(rms_vec)
-    rms_vec[i] = run_zac(τ_hist,B_hist_b,J,W_telescope_range[i],Σ_trim)
+@showprogress "simulating..." for ii = 1:main_runs
+    Σ_trim = 1e-2
+    rms_vec = zeros(length(W_telescope_range))
+    for i = 1:length(rms_vec)
+        W_telescope = W_telescope_range[i]^2
+        rms_vec[i] = run_zac(τ_hist,B_hist_b,J,W_telescope,Σ_trim)
+    end
+    rms_mat[ii,:] = rms_vec
 end
+# mat"
+# figure
+# hold on
+# %plot($W_telescope_range,$rms_vec)
+# plot($W_telescope_range,$rms_mat')
+# xlabel('Telescope sigma (arcseconds)')
+# ylabel('RMS (arcseconds)')
+# xlim([1e-4,10])
+# set(gca, 'YScale', 'log')
+# set(gca, 'XScale', 'log')
+# hold off
+# %saveas(gcf,'rms_pointing.png')
+# "
 
+lower_bound = zeros(46)
+mean_line = zeros(46)
+upper_bound = zeros(46)
+for i = 1:length(mean_line)
+    mean_line[i] = mean(rms_mat[:,i])
+    σ = std(rms_mat[:,i])
+    lower_bound[i] = mean_line[i] - 2*σ
+    upper_bound[i] = mean_line[i] + 2*σ
+end
 mat"
 figure
 hold on
-plot($W_telescope_range,$rms_vec)
+%plot($W_telescope_range,$rms_vec)
+plot($W_telescope_range,$mean_line,'b')
+plot($W_telescope_range,$lower_bound,'r')
+plot($W_telescope_range,$upper_bound,'r')
+xlabel('Telescope sigma (arcseconds) (idk what this is really called)')
+ylabel('RMS Pointing Error (arcseconds)')
+xlim([1e-4,10])
 set(gca, 'YScale', 'log')
 set(gca, 'XScale', 'log')
 hold off
+saveas(gcf,'rms_bounds_pointing.png')
 "
+@save "mc_pointing.jld2" W_telescope_range mean_line lower_bound upper_bound
+end
+
+run_mc()
