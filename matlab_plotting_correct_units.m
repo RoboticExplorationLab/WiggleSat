@@ -22,10 +22,10 @@ for i = 1:length(y_avg)
 end
 
 % y_avg = y_avg*1e3
-% anything after 1000 can sample way way slower 
+% anything after 1000 can sample way way slower
 
 figure
-hold on 
+hold on
 plot(newf,y_avg,'k')
 % a = area(newf,y_avg);
 % a.FaceColor = 'k';
@@ -44,6 +44,6 @@ xlabel('Frequency (hz)')
 ylabel('Maximum Normalized Magnitude \mu')
 set(gca, 'XScale', 'log')
 set(gca, 'YScale', 'log')
-hold off 
+hold off
 % saveas(gcf,'testplot.png')
 matlab2tikz('mc_frequencies_units8.tex')

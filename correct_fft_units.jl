@@ -6,6 +6,7 @@ using Infiltrator
 using FFTW
 using MATLAB
 using Dierckx
+using ProgressMeter
 
 function run_SD_prop(dt)
 
@@ -366,7 +367,7 @@ y_max[1]= 0.0
 return Ys, newf, newYs, y_max
 end
 
-Ys, newf, newYs, y_max = monte_carlo_driver(200)
+Ys, newf, newYs, y_max = monte_carlo_driver(10)
 
 mat"figure
 hold on

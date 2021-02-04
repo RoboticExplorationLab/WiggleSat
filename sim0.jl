@@ -272,8 +272,8 @@ function run_sim()
     Y_mag3, f = fft_analysis(τ1,dt)
     Y_mag2, f = fft_analysis(τ2,dt)
     Y_mag1, f = fft_analysis(τ3,dt)
-    @infiltrate
-    error()
+    # @infiltrate
+    # error()
     Y_mag = Y_mag1 + Y_mag2 + Y_mag3
     # x = τ_plot[2,:]
     # y = fft(x)
